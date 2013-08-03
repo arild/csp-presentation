@@ -1,5 +1,6 @@
 
 from tsp import *
+from timer import *
 
 
 def main():
@@ -11,6 +12,7 @@ def main():
 
 
 if __name__ == "__main__":
-    import timeit
-    time = timeit.timeit(main, number=1)
-    print 'Execution time in seconds: ', time
+    timer = Timer()
+    with timer:
+        main()
+    print 'Execution time in seconds: ', timer.duration_in_seconds()
