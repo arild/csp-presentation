@@ -2,10 +2,17 @@ import numpy
 import random
 
 
+""" Holds a route represented by a list of node numbers, and the route's total distance
+"""
 class Route:
     def __init__(self, path=[0], distance=0):
         self.path = path
         self.distance = distance
+
+    """ Returns a new route by adding provided node to current route
+    """
+    def create_next_route(self, node, distance):
+        return Route(self.path + [node], self.distance + distance)
 
 
 """ Returns a deterministically generated matrix representing distances between nodes.
@@ -39,7 +46,7 @@ def get_sub_routes(distance_matrix, depth, current_route=Route()):
             from_vertex = current_route.path[-1]
             to_vertex = vertex
             distance = distance_matrix[from_vertex][to_vertex]
-            new_current_route = Route(current_route.path + [vertex], current_route.distance + distance)
+            new_current_route = current_route.create_next_route(vertex, distance)
 
             sub_routes += get_sub_routes(distance_matrix, depth, new_current_route)
         return sub_routes
@@ -66,7 +73,7 @@ def find_shortest_route(distance_matrix, current_route):
             from_vertex = current_route.path[-1]
             to_vertex = vertex
             distance = distance_matrix[from_vertex][to_vertex]
-            new_current_route = Route(current_route.path + [vertex], current_route.distance + distance)
+            new_current_route = current_route.create_next_route(vertex, distance)
 
             final_route = find_shortest_route(distance_matrix, new_current_route)
             if shortest_final_route is None or final_route.distance < shortest_final_route.distance:
