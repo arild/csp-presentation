@@ -1,17 +1,5 @@
-import math
 import numpy
 import random
-
-
-class Coord:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def euclid_dist(self, destination):
-        dx = math.fabs(self.x, destination.x)
-        dy = math.fabs(self.y - destination.y)
-        return math.sqrt(dx * dx + dy * dy)
 
 
 class Route:
@@ -20,6 +8,10 @@ class Route:
         self.distance = distance
 
 
+""" Returns a deterministically generated matrix representing distances between nodes.
+
+intended usage: matrix[row_idx][col_idx] represents distance from node 'row_idx' to node 'col_idx'
+"""
 def generate_distance_matrix():
     num_vertices = 11
     distanceMatrix = numpy.ndarray((num_vertices, num_vertices))
@@ -30,6 +22,8 @@ def generate_distance_matrix():
     return distanceMatrix
 
 
+""" Returns a list of sub routes of maximum length/depth starting from provided route
+"""
 def get_sub_routes(distance_matrix, depth, current_route=Route()):
     max_path_length = len(distance_matrix)
 
@@ -51,6 +45,10 @@ def get_sub_routes(distance_matrix, depth, current_route=Route()):
         return sub_routes
 
 
+""" Returns shortest route starting from provided sub route
+
+Assumes that start node is 0,0 in distance matrix
+"""
 def find_shortest_route(distance_matrix, current_route):
     max_path_length = len(distance_matrix)
 
