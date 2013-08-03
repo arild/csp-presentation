@@ -11,4 +11,6 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import timeit
+    time = timeit.timeit(main, number=1)
+    print 'Execution time in seconds: ', time

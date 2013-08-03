@@ -21,7 +21,7 @@ class Route:
 
 
 def generate_distance_matrix():
-    num_vertices = 7
+    num_vertices = 11
     distanceMatrix = numpy.ndarray((num_vertices, num_vertices))
     random.seed(2)
     for i in range(0, num_vertices):

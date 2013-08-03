@@ -3,7 +3,7 @@ from tsp import *
 from pycsp import *
 
 
-@process
+@multiprocess
 def Worker(init_chan, task_chan, result_chan):
     distance_matrix = init_chan()
     while True:
@@ -23,12 +23,12 @@ def Broadcast(chan, msg, num_times):
     print 'broadcast done'
 
 
-@process
+@multiprocess
 def Master(init_chan, task_chan, result_chan):
     distance_matrix = generate_distance_matrix()
 
     # Generate tasks
-    tasks = get_sub_routes(distance_matrix, 3)
+    tasks = get_sub_routes(distance_matrix, 2)
     num_tasks = len(tasks)
     print 'Num tasks: ', num_tasks
 
@@ -57,9 +57,11 @@ def main():
     task_channel = Channel()
     result_channel = Channel()
     Parallel(Master(init_channel.writer(), task_channel.writer(), result_channel.reader()),
-             Worker(init_channel.reader(), task_channel.reader(), result_channel.writer()) * 3)
-    shutdown()
+             Worker(init_channel.reader(), task_channel.reader(), result_channel.writer()) * 4)
 
 
 if __name__ == "__main__":
-    main()
+    import timeit
+    time = timeit.timeit(main, number=1)
+    print 'Execution time in seconds: ', time
+    shutdown()
