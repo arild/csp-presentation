@@ -1,5 +1,6 @@
 import numpy
 import random
+import sys
 
 
 """ Holds a route represented by a list of node numbers, and the route's total distance
@@ -56,7 +57,7 @@ def get_sub_routes(distance_matrix, depth, current_route=Route()):
 
 Assumes that start node is 0,0 in distance matrix
 """
-def find_shortest_route(distance_matrix, current_route):
+def find_shortest_route(distance_matrix, current_route, current_shortest_distance=sys.maxint):
     max_path_length = len(distance_matrix)
 
     def get_remaining_vertices():
@@ -75,8 +76,17 @@ def find_shortest_route(distance_matrix, current_route):
             distance = distance_matrix[from_vertex][to_vertex]
             new_current_route = current_route.create_next_route(vertex, distance)
 
-            final_route = find_shortest_route(distance_matrix, new_current_route)
-            if shortest_final_route is None or final_route.distance < shortest_final_route.distance:
-                shortest_final_route = final_route
+            if new_current_route.distance < current_shortest_distance:
+                # Still possible to find a shorter route, continue search
+                if shortest_final_route is None:
+                    final_route = find_shortest_route(distance_matrix, new_current_route, current_shortest_distance)
+                else:
+                    final_route = find_shortest_route(distance_matrix, new_current_route, min(shortest_final_route.distance, current_shortest_distance))
+                if final_route is not None and (shortest_final_route is None or final_route.distance < shortest_final_route.distance):
+                    shortest_final_route = final_route
+            else:
+                # Branch and bound optimization:
+                # Route is already longer than the current shortest know route
+                pass
 
         return shortest_final_route
