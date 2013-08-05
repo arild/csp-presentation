@@ -20,8 +20,7 @@ class Route:
 
 intended usage: matrix[row_idx][col_idx] represents distance from node 'row_idx' to node 'col_idx'
 """
-def generate_distance_matrix():
-    num_vertices = 11
+def generate_distance_matrix(num_vertices):
     distanceMatrix = numpy.ndarray((num_vertices, num_vertices))
     random.seed(2)
     for i in range(0, num_vertices):
