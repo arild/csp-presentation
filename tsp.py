@@ -52,7 +52,7 @@ def get_sub_routes(distance_matrix, depth, current_route=Route()):
         return sub_routes
 
 
-""" Returns shortest route starting from provided sub route
+""" Returns shortest route starting from provided sub route. Implements branch and bound optimization.
 
 Assumes that start node is 0,0 in distance matrix
 """
