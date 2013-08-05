@@ -10,8 +10,8 @@ def Worker(init_chan, task_chan, result_chan):
     distance_matrix = init_chan()
     while True:
         try:
-            sub_route = task_chan()
-            shortest_route = find_shortest_route(distance_matrix, sub_route)
+            (sub_route, shortest_distance) = task_chan()
+            shortest_route = find_shortest_route(distance_matrix, sub_route, shortest_distance)
             result_chan(shortest_route)
         except ChannelPoisonException:
             break
@@ -34,22 +34,24 @@ def Master(init_chan, task_chan, result_chan, num_cities, task_depth):
     num_tasks = len(tasks)
     print 'Num tasks: ', num_tasks
 
-    results = []
-    while len(results) < num_tasks:
+    num_results_collected = 0
+    shortest_route = Route(distance=sys.maxint)
+    while num_results_collected < num_tasks:
         guards = [OutputGuard(init_chan, msg=distance_matrix),
                   InputGuard(result_chan),
                   TimeoutGuard(seconds=1)]
         if len(tasks) > 0:
             next_task = tasks[-1]
-            guards.append(OutputGuard(task_chan, msg=next_task, action=tasks.pop))
+            guards.append(OutputGuard(task_chan, msg=(next_task, shortest_route.distance), action=tasks.pop))
 
         (chan, msg) = AltSelect(guards)
         if chan == result_chan:
-            results.append(msg)
+            num_results_collected += 1
+            if msg is not None and msg.distance < shortest_route.distance:
+                shortest_route = msg
 
     poison(task_chan)
 
-    shortest_route = reduce(lambda res, cur: cur if cur.distance < res.distance else res, results)
     print 'Shortest path: ', shortest_route.path
     print 'Distance: ', shortest_route.distance
 
