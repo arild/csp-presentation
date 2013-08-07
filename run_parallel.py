@@ -22,15 +22,20 @@ def Worker(init_chan, task_chan, result_chan, shortest_route_chan):
 
             (chan, msg) = PriSelect(guards)
             if chan == shortest_route_chan:
-                logger.log('NEW SHORTEST ROUTE: ', msg)
+                logger.log('NEW SHORTEST ROUTE: ', msg, current_process_id())
                 shortest_distance = msg
             elif chan == task_chan:
                 tasks = msg
+                if not tasks:
+                    task_chan.retire()
+                    break
 
             if tasks:
                 shortest_route = find_shortest_route(distance_matrix, tasks.pop(), shortest_distance)
-                result_chan(shortest_route)
+                if shortest_route and shortest_route.distance < shortest_distance:
+                    result_chan(shortest_route)
         except ChannelPoisonException:
+            logger.log('poison')
             break
     logger.log('DONE')
 
@@ -45,31 +50,30 @@ def Master(init_chan, task_chan, result_chan, shortest_route_chan, num_cities, t
     num_tasks = len(tasks)
     logger.log('Num tasks: ', num_tasks)
 
-    num_results_collected = 0
     num_workers = 0
     shortest_route = Route(distance=sys.maxint)
-    while num_results_collected < num_tasks:
-        guards = [OutputGuard(init_chan, msg=distance_matrix),
-                  InputGuard(result_chan)]
-        if len(tasks) > 0:
-            next_task = tasks[0:5]
-            guards.append(OutputGuard(task_chan, msg=next_task))
+    while True:
+        try:
+            guards = [OutputGuard(init_chan, msg=distance_matrix),
+                      InputGuard(result_chan)]
+            if tasks:
+                guards.append(OutputGuard(task_chan, msg=tasks[0:5]))
+            else:
+                guards.append(OutputGuard(task_chan, msg=None))
 
-        #logger.log('before select')
-        (chan, msg) = AltSelect(guards)
-        #logger.log('after select')
-        if chan == init_chan:
-            num_workers += 1
-        elif chan == task_chan:
-            tasks = tasks[5:]
-        elif chan == result_chan:
-            num_results_collected += 1
-            if msg is not None and msg.distance < shortest_route.distance:
-                shortest_route = msg
-                #logger.log('sending new shortest route')
-                shortest_route_chan((shortest_route.distance, num_workers))
-                #logger.log('done sending new shortest route')
+            (chan, msg) = AltSelect(guards)
 
+            if chan == init_chan:
+                num_workers += 1
+            elif chan == task_chan:
+                tasks = tasks[5:]
+            elif chan == result_chan:
+                if msg.distance < shortest_route.distance:
+                    shortest_route = msg
+                    shortest_route_chan((shortest_route.distance, num_workers))
+        except ChannelRetireException:
+            logger.log('retire exception')
+            break
     poison(task_chan)
     poison(shortest_route_chan)
     logger.log('Shortest path: ', shortest_route.path)
