@@ -1,7 +1,7 @@
 from pycsp import *
 import datetime
 
-log_chan = Channel('logger')
+log_chan = None
 
 
 @process
@@ -15,6 +15,8 @@ def LoggerProcess(log_chan):
 
 
 def init():
+    global log_chan
+    log_chan = Channel('logger')
     Spawn(LoggerProcess(log_chan.reader()))
 
 
