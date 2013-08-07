@@ -12,16 +12,23 @@ def Worker(init_chan, task_chan, result_chan, shortest_route_chan):
     logger = Logger.get_logger('worker')
     distance_matrix = init_chan()
     shortest_distance = sys.maxint
+    tasks = []
     while True:
         try:
-            (chan, msg) = PriSelect(TimeoutGuard(seconds=1), InputGuard(shortest_route_chan), InputGuard(task_chan))
+            guards = [InputGuard(shortest_route_chan)]
+            if not tasks:
+                guards += [InputGuard(task_chan)]
+            guards += [SkipGuard()]
 
+            (chan, msg) = PriSelect(guards)
             if chan == shortest_route_chan:
                 logger.log('NEW SHORTEST ROUTE: ', msg)
                 shortest_distance = msg
             elif chan == task_chan:
-                sub_route = msg
-                shortest_route = find_shortest_route(distance_matrix, sub_route, shortest_distance)
+                tasks = msg
+
+            if tasks:
+                shortest_route = find_shortest_route(distance_matrix, tasks.pop(), shortest_distance)
                 result_chan(shortest_route)
         except ChannelPoisonException:
             break
@@ -45,14 +52,16 @@ def Master(init_chan, task_chan, result_chan, shortest_route_chan, num_cities, t
         guards = [OutputGuard(init_chan, msg=distance_matrix),
                   InputGuard(result_chan)]
         if len(tasks) > 0:
-            next_task = tasks[-1]
-            guards.append(OutputGuard(task_chan, msg=next_task, action=tasks.pop))
+            next_task = tasks[0:5]
+            guards.append(OutputGuard(task_chan, msg=next_task))
 
         #logger.log('before select')
         (chan, msg) = AltSelect(guards)
         #logger.log('after select')
         if chan == init_chan:
             num_workers += 1
+        elif chan == task_chan:
+            tasks = tasks[5:]
         elif chan == result_chan:
             num_results_collected += 1
             if msg is not None and msg.distance < shortest_route.distance:
