@@ -50,10 +50,11 @@ URL: https://code.google.com/p/io-2012-slides
           <ul>
               <li>CSP Overview</li>
               <li>Motivation</li>
-              <li>Introduction to CSP (and Actor Model)
-              <ul>
-                  <li>Code examples in PyCSP</li>
-              </ul>
+              <li>CSP vs Actor Model</li>
+              <li>Introduction to CSP
+                  <ul>
+                      <li>Code examples in PyCSP</li>
+                  </ul>
               </li>
               <li>Travelling Salesman Problem in PyCSP </li>
               <li>Summary</li>
@@ -79,6 +80,7 @@ URL: https://code.google.com/p/io-2012-slides
                   <ul>
                       <li>Sequential <b>processes</b></li>
                       <li>Synchronous communication through <b>channels</b></li>
+                      <li>Multiplexing of channels with <b>guards</b></li>
                   </ul>
               </li>
           </ul>
@@ -87,10 +89,20 @@ URL: https://code.google.com/p/io-2012-slides
 
   <slide>
       <hgroup>
-          <h2>Code Slide (with Subtitle Placeholder)</h2>
+          <h2>Motivation</h2>
       </hgroup>
       <article>
-      <pre class="prettyprint" data-lang="python">
+          <ul>
+          </ul>
+      </article>
+  </slide>
+
+  <slide>
+      <hgroup>
+          <h2>Channels in PyCSP</h2>
+      </hgroup>
+      <article>
+          <pre class="prettyprint" data-lang="python">
 N = 100000
 
 @pycsp.process
@@ -106,6 +118,17 @@ for i in xrange(N):
   cout(i)
 
 pycsp.shutdown()
+          </pre>
+      </article>
+  </slide>
+
+
+  <slide>
+      <hgroup>
+          <h2>Processes in PyCSP</h2>
+      </hgroup>
+      <article>
+      <pre class="prettyprint" data-lang="python">
 </pre>
       </article>
   </slide>

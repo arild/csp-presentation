@@ -1,7 +1,7 @@
 var SLIDE_CONFIG = {
   // Slide settings
   settings: {
-    title: 'Comm. Sequential Processes (CSP)',
+    title: 'Communicating Sequential Processes (CSP)',
     subtitle: 'An alternative to the actor model',
     //eventInfo: {
     //  title: 'Google I/O',
