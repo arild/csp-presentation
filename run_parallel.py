@@ -17,14 +17,6 @@ def Worker(init_chan, task_chan, result_chan):
             break
 
 
-@process
-def Broadcast(chan, msg, num_times):
-    for _ in range(0, num_times):
-        AltSelect(OutputGuard(chan, msg=msg),
-                  TimeoutGuard(seconds=5))
-    print 'broadcast done'
-
-
 @multiprocess
 def Master(init_chan, task_chan, result_chan, num_cities, task_depth):
     distance_matrix = generate_distance_matrix(num_cities)
