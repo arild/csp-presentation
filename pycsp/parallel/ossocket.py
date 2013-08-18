@@ -10,15 +10,14 @@ See LICENSE.txt for licensing details (MIT License).
 
 import time
 import errno
-import os
+import os, platform
 import socket
 import sys
-import threading
 from pycsp.parallel.exceptions import *
 from pycsp.parallel.configuration import *
 from pycsp.parallel.const import *
 
-
+PLATFORM_SYSTEM = platform.system()
 STDERR_OUTPUT = False
 
 conf = Configuration()    
@@ -65,7 +64,6 @@ def _connect(addr, reconnect=True):
     while (not connected):
         try:
             
-            #print(str(threading.currentThread())+"Creating connection to "+str(addr))
 
             # Create IPv4 TCP socket (TODO: add support for IPv6)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -110,6 +108,13 @@ def start_server(server_addr=('', 0)):
     
     while (not ok):
         try:
+            if PLATFORM_SYSTEM == 'Darwin':
+                # This is an awfull hack for darwin systems. There is a flaw in
+                # the module function socket.bind(addr), which may cause socket.bind(addr)
+                # to block when multiple OS processes try to bind at the same time.
+                time.sleep(0.1)
+
+
             # Create IPv4 TCP socket (TODO: add support for IPv6)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -118,10 +123,10 @@ def start_server(server_addr=('', 0)):
 
             # Enable reuse of sockets in TIME_WAIT state.  
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
+            
             # Bind to address
             sock.bind(server_addr)
-            
+
             # Initiate listening for connections. Create queue of 5 for unaccepted connections
             sock.listen(5)
 
@@ -204,7 +209,6 @@ class ConnHandler(object):
         self.cacheSockets = {}
 
     def updateCache(self, addr, sock):
-        #print(str(threading.currentThread())+"update cache with "+str(addr))
         if ENABLE_CACHE:
             if not addr in self.cacheSockets:
                 self.cacheSockets[addr] = sock

@@ -11,12 +11,10 @@ import types
 import uuid
 import threading
 
-from multiprocessing import Process
-from multiprocessing.sharedctypes import RawValue
+import multiprocessing
 
 from pycsp.parallel.dispatch import SocketDispatcher
 from pycsp.parallel.protocol import RemoteLock
-from pycsp.parallel.channel import Channel, ChannelEndRead, ChannelEndWrite
 from pycsp.parallel.const import *
 from pycsp.parallel.configuration import *
 from pycsp.parallel.exceptions import *
@@ -24,8 +22,8 @@ from pycsp.parallel.exceptions import *
 conf = Configuration()
 
 # Decorators
-def multiprocess(func=None, host='', port=None):
-    """ @multiprocess(host='', port=None)
+def multiprocess(func=None, pycsp_host='', pycsp_port=None):
+    """ @multiprocess(pycsp_host='', pycsp_port=None)
 
     @multiprocess decorator for making a function into a CSP MultiProcess factory.
     Each generated CSP process is implemented as a single OS process.
@@ -41,7 +39,7 @@ def multiprocess(func=None, host='', port=None):
       >>> P = filter(A.reader(), B.writer(), "42", debug=True)
 
       or
-      >>> @multiprocess(host="localhost", port=9998)
+      >>> @multiprocess(pycsp_host="localhost", pycsp_port=9998)
       >>> def filter(dataIn, dataOut, tag, debug=False):
       >>>   pass # perform filtering
       >>>
@@ -52,15 +50,15 @@ def multiprocess(func=None, host='', port=None):
     """
     if func:
         def _call(*args, **kwargs):
-            host = ''
-            port = None
-            return MultiProcess(func, host, port, *args, **kwargs)
+            return MultiProcess(func, *args, **kwargs)
         _call.func_name = func.func_name
         return _call
     else:
         def wrap_process(func):
             def _call(*args, **kwargs):
-                return MultiProcess(func, host, port, *args, **kwargs)
+                kwargs['pycsp_host']= pycsp_host
+                kwargs['pycsp_port']= pycsp_port
+                return MultiProcess(func, *args, **kwargs)
             _call.func_name = func.func_name
             return _call
         return wrap_process
@@ -69,7 +67,7 @@ def multiprocess(func=None, host='', port=None):
 
 # Classes
 class MultiProcess(multiprocessing.Process):
-    """ MultiProcess(func, host, port, *args, **kwargs)
+    """ MultiProcess(func, *args, **kwargs)
 
     CSP process implemented as a single OS process.
 
@@ -80,9 +78,9 @@ class MultiProcess(multiprocessing.Process):
       >>> def filter(dataIn, dataOut, tag, debug=False):
       >>>   pass # perform filtering
       >>>
-      >>> P = MultiProcess(filter, "localhost", 0, A.reader(), B.writer(), "42", debug=True) 
+      >>> P = MultiProcess(filter, A.reader(), B.writer(), "42", debug=True, pycsp_host='localhost') 
 
-    MultiProcess(func, host, port, *args, **kwargs)
+    MultiProcess(func, *args, **kwargs)
     func
       The function object to wrap and execute in the body of the process.
     args and kwargs
@@ -92,17 +90,20 @@ class MultiProcess(multiprocessing.Process):
     Public variables:
       MultiProcess.name       Unique name to identify the process
     """
-    def __init__(self, fn, host, port, *args, **kwargs):
+    def __init__(self, fn, *args, **kwargs):
         multiprocessing.Process.__init__(self)
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
+        
+        # Create return pipe for return value
+        self.return_pipe = multiprocessing.Pipe()
 
         # Create 64 byte unique id based on network address, sequence number and time sample.
         self.id = uuid.uuid1().hex + "." + fn.func_name[:31]
-        
 
         # Channel request state
+        self.cond = None
         self.state = FAIL
         self.result_ch_idx = None
         self.result_msg = None
@@ -112,10 +113,6 @@ class MultiProcess(multiprocessing.Process):
 
         # Used to ensure the validity of the remote answers
         self.sequence_number = 1
-
-        # Host and Port address will be set for the SocketDispatcher (one per interpreter/multiprocess)
-        self.host = host
-        self.port = port
 
         # Protect against early termination of mother-processes leavings childs in an invalid state
         self.spawned = []
@@ -132,7 +129,21 @@ class MultiProcess(multiprocessing.Process):
         self.maintained= True
 
         # report execution error
-        self._error = RawValue('i', 0)
+        self._error = multiprocessing.RawValue('i', 0)
+
+    def update(self, **kwargs):
+        if self.cond:
+            raise FatalException("Can not update process settings after it has been started")
+    
+        diff= set(kwargs.keys()).difference(["pycsp_host", "pycsp_port"])
+        if diff:
+            raise InfoException("Parameters %s not valid for MultiProcess, use another process type or remove parameters." % (str(diff)))
+        
+        # Update values
+        self.kwargs.update(kwargs)
+
+        # Return updated process
+        return self
 
     def wait_ack(self):
         self.cond.acquire()
@@ -148,22 +159,40 @@ class MultiProcess(multiprocessing.Process):
             self.cond.wait()
         self.cond.release()
 
-    def _report(self):
-        # Method to execute after process have quit.
+    def join_report(self):
         # This method enables propagation of errors to parent processes and threads.
+        # It also transfers the return value from function
+
+        # Receive value while process is running, since send may block until read
+        val= self.return_pipe[0].recv()
         
-        # It is optional whether the parent process/threads calls this method, thus
-        # no cleanup should be made from this method. Purely reporting.
+        # Wait for process to finish
+        self.join()
 
         # 1001 = Socket bind error
         if self._error.value == 1001:          
             raise ChannelBindException(None, 'Could not bind to address in multiprocess')
+
+        # Return read value
+        return val
+
 
     def run(self):
         
         # Multiprocessing inherits global objects like singletons. Thus we must reset!
         # Reset SocketDispatcher Singleton object to force the creation of a new
         # SocketDispatcher
+
+        # Host and Port address will be set for the SocketDispatcher (one per interpreter/multiprocess)
+        if self.kwargs.has_key("pycsp_host"):
+            self.host = self.kwargs.pop("pycsp_host")
+        else:
+            self.host = ''
+            
+        if self.kwargs.has_key("pycsp_port"):
+            self.port = self.kwargs.pop("pycsp_port")
+        else:
+            self.port = None
 
         if self.host != '':
             conf.set(PYCSP_HOST, self.host)
@@ -174,6 +203,7 @@ class MultiProcess(multiprocessing.Process):
             SocketDispatcher(reset=True)
         except SocketBindException as e:
             self._error.value = 1001
+            self.return_pipe[1].send(None)
             return
 
         # Create remote lock
@@ -182,10 +212,9 @@ class MultiProcess(multiprocessing.Process):
         self.addr = dispatch.server_addr
         dispatch.registerProcess(self.id, RemoteLock(self))
 
+        return_value = None
         try:
-            # Do not store the returned value from the process
-            # TODO: Consider, whether process should return values
-            self.fn(*self.args, **self.kwargs)
+            return_value = self.fn(*self.args, **self.kwargs)
         except ChannelPoisonException as e:
             # look for channels and channel ends
             self.__check_poison(self.args)
@@ -194,10 +223,12 @@ class MultiProcess(multiprocessing.Process):
             # look for channel ends
             self.__check_retire(self.args)
             self.__check_retire(self.kwargs.values())
-
+        finally:
+            self.return_pipe[1].send(return_value)
+    
         # Join spawned processes
         for p in self.spawned:
-            p.join()
+            p.join_report()
 
         # Initiate clean up and waiting for channels to finish outstanding operations.
         for channel in self.activeChanList:
@@ -263,11 +294,14 @@ class MultiProcess(multiprocessing.Process):
 
     # syntactic sugar:  Process() * 2 == [Process<1>,Process<2>]
     def __mul__(self, multiplier):
-        return [self] + [MultiProcess(self.fn, self.host, 0, *self.__mul_channel_ends(self.args), **self.__mul_channel_ends(self.kwargs)) for i in range(multiplier - 1)]
+        kwargs = self.__mul_channel_ends(self.kwargs)
+        # Reset port number, as only one multiprocess may bind to the same interface
+        kwargs['pycsp_port']=0
+        return [self] + [MultiProcess(self.fn, *self.__mul_channel_ends(self.args), **kwargs) for i in range(multiplier - 1)]
 
     # syntactic sugar:  2 * Process() == [Process<1>,Process<2>]
     def __rmul__(self, multiplier):
-        return [self] + [MultiProcess(self.fn, self.host, 0, *self.__mul_channel_ends(self.args), **self.__mul_channel_ends(self.kwargs)) for i in range(multiplier - 1)]
+        return self.__mul__(multiplier)
 
     # Copy lists and dictionaries
     def __mul_channel_ends(self, args):

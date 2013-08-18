@@ -9,16 +9,19 @@ See LICENSE.txt for licensing details (MIT License).
 """
 
 import os
-import sys
 import select, threading
 import errno
+
+try:    
+    import multiprocessing
+    MULTIPROCESSING_ENABLED=1
+except ImportError:
+    MULTIPROCESSING_ENABLED=0
 
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
-
-import struct
 
 
 from pycsp.parallel import ossocket
@@ -109,15 +112,16 @@ class SocketDispatcher(object):
             cls.__instance = None
 
         cls.__condObj.acquire()
+
         try:
-            try:
-                import multiprocessing 
+            if MULTIPROCESSING_ENABLED:                        
                 if cls.__instance is not None:
                     subprocess = multiprocessing.current_process()
                     if cls.__instance.interpreter != subprocess:
+                        del cls.__condObj
+                        cls.__condObj = threading.Condition()
+                        del cls.__instance
                         cls.__instance = None
-            except ImportError:
-                pass
 
             if cls.__instance is None:
                 # Initialize **the unique** instance
@@ -125,14 +129,12 @@ class SocketDispatcher(object):
                 cls.__instance.condObj = cls.__condObj
 
                 # Record interpreter subprocess if multiprocessing is available
-                try:
-                    import multiprocessing
+                if MULTIPROCESSING_ENABLED:
                     cls.__instance.interpreter = multiprocessing.current_process()
-                except ImportError:
-                    pass
 
                 # Init SocketThreadData                
                 cls.__instance.socketthreaddata = SocketThreadData(cls.__instance.condObj)
+                                
         finally:
             #  Exit from critical section whatever happens
             cls.__condObj.release()
@@ -319,7 +321,8 @@ class SocketThread(threading.Thread):
 
                             elif (header.cmd & PROCESS_CMD):
                                 if header.id in self.processes:
-                                    self.processes[header.id].handle(m)                                
+                                    p = self.processes[header.id]
+                                    p.handle(m)                                
                                 elif (header.cmd & REQ_REPLY):
                                     raise FatalException("A REQ_REPLY message should always be valid!")
                                 elif (header.cmd & IGN_UNKNOWN):
@@ -328,22 +331,26 @@ class SocketThread(threading.Thread):
                                     if not header.id in self.data.processes_unknown:
                                         self.data.processes_unknown[header.id] = []
                                     self.data.processes_unknown[header.id].append(m)
+
                             else:
                                 if header.id in self.channels:
+                                    c = self.channels[header.id]
                                     if (header.cmd & IS_REPLY):
-                                        self.channels[header.id].put_reply(m)
+                                        c.put_reply(m)
                                     else:
-                                        self.channels[header.id].put_normal(m)
+                                        c.put_normal(m)
                                 elif (header.cmd & IGN_UNKNOWN):
                                     pass
                                 else:                                
                                     if not header.id in self.data.channels_unknown:
                                         self.data.channels_unknown[header.id] = QueueBuffer()
 
+                                    c = self.data.channels_unknown[header.id]
+
                                     if (header.cmd & IS_REPLY):
-                                        self.data.channels_unknown[header.id].put_reply(m)
+                                        c.put_reply(m)
                                     else:
-                                        self.data.channels_unknown[header.id].put_normal(m)
+                                        c.put_normal(m)
                             self.cond.release()
 
 class SocketThreadData:
@@ -368,7 +375,6 @@ class SocketThreadData:
             host = os.environ[ENVVAL_HOST]
         addr = (host, port)
 
-        
         self.server_socket, self.server_addr = ossocket.start_server(addr)
 
         self.active_socket_list = [self.server_socket]
