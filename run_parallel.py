@@ -26,11 +26,11 @@ def Broadcast(chan, msg, num_times):
 
 
 @multiprocess
-def Master(init_chan, task_chan, result_chan, depth):
-    distance_matrix = generate_distance_matrix()
+def Master(init_chan, task_chan, result_chan, num_cities, task_depth):
+    distance_matrix = generate_distance_matrix(num_cities)
 
     # Generate tasks
-    tasks = get_sub_routes(distance_matrix, depth)
+    tasks = get_sub_routes(distance_matrix, task_depth)
     num_tasks = len(tasks)
     print 'Num tasks: ', num_tasks
 
@@ -54,23 +54,24 @@ def Master(init_chan, task_chan, result_chan, depth):
     print 'Distance: ', shortest_route.distance
 
 
-def main(num_workers, depth):
+def main(num_cities, task_depth, num_workers):
     init_channel = Channel()
     task_channel = Channel()
     result_channel = Channel()
-    Parallel(Master(init_channel.writer(), task_channel.writer(), result_channel.reader(), depth),
+    Parallel(Master(init_channel.writer(), task_channel.writer(), result_channel.reader(), num_cities, task_depth),
              Worker(init_channel.reader(), task_channel.reader(), result_channel.writer()) * num_workers)
     shutdown()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print 'usage <num workers><task depth>'
+    if len(sys.argv) != 4:
+        print 'usage <num cities<task depth><num workers>'
         sys.exit(0)
-    num_workers = int(sys.argv[1])
-    depth = int(sys.argv[2])
+    num_cities = int(sys.argv[1])
+    task_depth = int(sys.argv[2])
+    num_workers = int(sys.argv[3])
 
     timer = Timer()
     with timer:
-        main(num_workers, depth)
+        main(num_cities, task_depth, num_workers)
     print 'Execution time in seconds: ', timer.duration_in_seconds()
