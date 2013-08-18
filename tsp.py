@@ -1,4 +1,3 @@
-import numpy
 import random
 import sys
 
@@ -21,12 +20,14 @@ class Route:
 intended usage: matrix[row_idx][col_idx] represents distance from node 'row_idx' to node 'col_idx'
 """
 def generate_distance_matrix(num_vertices):
-    distanceMatrix = numpy.ndarray((num_vertices, num_vertices))
+    def create_2d_array(size):
+        return [[0 for _ in range(size)] for _ in range(size)]
+    distance_matrix = create_2d_array(num_vertices)
     random.seed(2)
     for i in range(0, num_vertices):
         for j in range(0, num_vertices):
-            distanceMatrix[i][j] = random.randint(1, 5)
-    return distanceMatrix
+            distance_matrix[i][j] = random.randint(1, 5)
+    return distance_matrix
 
 
 """ Returns a list of sub routes of maximum length/depth starting from provided route
