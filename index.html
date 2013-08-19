@@ -116,22 +116,26 @@ URL: https://code.google.com/p/io-2012-slides
     <hgroup>
         <h2>Two Models of Concurrency</h2>
     </hgroup>
-    <article class="build">
-        <ul>
-            Shared Memory
-            <ul>
-                <li>Threads</li>
-                <li>Locks</li>
-                <li>Mutexes</li>
-            </ul>
+    <article>
+        <ul class="build">
+            <li>
+                Shared Memory
+                <ul>
+                    <li>Threads</li>
+                    <li>Locks</li>
+                    <li>Mutexes</li>
+                </ul>
+            </li>
         </ul>
-        <ul>
-            Message Passing (CSP and Actor Model)
-            <ul>
-                <li>Processes</li>
-                <li>Messages</li>
-                <li>No shared data</li>
-            </ul>
+        <ul class="build">
+            <li>
+                Message Passing (CSP and Actor Model)
+                <ul>
+                    <li>Processes</li>
+                    <li>Messages</li>
+                    <li>No shared data</li>
+                </ul>
+            </li>
         </ul>
     </article>
 </slide>
@@ -141,14 +145,17 @@ URL: https://code.google.com/p/io-2012-slides
         <h2>Shared Memory - Problem 1</h2>
     </hgroup>
     <article>
-        <p>Program crash in critical region corrupts memory.</p>
-        <br>
-
         <p>
-            <img width="45%" src="images/shared_memory_1.svg"/>
-            <img width="45%" style="float: right" src="images/shared_memory_2.svg"/>
+            <img width="45%" src="images/shared_memory_11.svg"/>
+            <img width="45%" style="float: right" src="images/shared_memory_12.svg"/>
         </p>
+        <p>Program crash in critical region corrupts memory.</p>
+        <ul>
+            <li>Difficult to reason about</li>
+            <li>Hard to recover from failure</li>
+        </ul>
 
+        <footer class="source">slide inspired by: <a href="http://www.infoq.com/presentations/erlang-software-for-a-concurrent-world">link</a></footer>
     </article>
 </slide>
 
@@ -157,14 +164,14 @@ URL: https://code.google.com/p/io-2012-slides
         <h2>Shared Memory - Problem 2</h2>
     </hgroup>
     <article>
-        <p>Program crashes in critical region having corrupted memory</p>
-        <br>
-
-        <p>
-            <img width="45%" src="images/shared_memory_1.svg"/>
-            <img width="45%" style="float: right" src="images/shared_memory_2.svg"/>
+        <p class="flexbox vcenter">
+            <img src="images/shared_memory_2.png"/>
         </p>
+        <br>
+        <p>Where is shared memory physically located?</p>
+        <p>Even harder to recover from failure</p>
 
+        <footer class="source">slide inspired by: <a href="http://www.infoq.com/presentations/erlang-software-for-a-concurrent-world">link</a></footer>
     </article>
 </slide>
 
@@ -326,6 +333,28 @@ pycsp.shutdown()
     </hgroup>
     <article>
       <a href="https://github.com/arild/fagdag_aug2013">https://github.com/arild/fagdag_aug2013</a>
+    </article>
+</slide>
+
+<slide>
+    <hgroup>
+        <h2>Resources</h2>
+    </hgroup>
+    <article>
+        <ul>
+            <li>
+                <a href=http://code.google.com/p/pycsp/>PyCSP - http://code.google.com/p/pycsp/</a>
+            </li>
+            <li>
+                <a href=http://www.infoq.com/presentations/erlang-software-for-a-concurrent-world>Erlang - software for a concurrent world</a>
+            </li>
+            <li>
+                <a href=http://letitcrash.com/>Let it crash - Akka team blog</a>
+                <ul>
+                    <li>Specific post from let it crash</li>
+                </ul>
+            </li>
+        </ul>
     </article>
 </slide>
 
