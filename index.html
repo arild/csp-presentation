@@ -271,28 +271,60 @@ URL: https://code.google.com/p/io-2012-slides
     </article>
 </slide>
 
+
+
 <slide>
     <hgroup>
-        <h2>Channels in PyCSP</h2>
+        <h2><span class="mono monoFirst">Process</span> and <span class="mono">Parallel</span></h2>
     </hgroup>
     <article>
-          <pre class="prettyprint" data-lang="python">
-N = 100000
+          <pre class="prettyprint" data-lang="python">@process
+def process1():
+    time.sleep(1)  # Sleep 1 second
+    print 'process1 exiting'
 
-@pycsp.process
-def readP(cin):
-  cin()
+@process
+def process2():
+    time.sleep(2)  # Sleep 2 seconds
+    print 'process2 exiting'
 
-A = pycsp.Channel("A")
+Parallel(process1(), process2())  # Blocks
+print 'program terminating'</pre>
 
-pycsp.Spawn(N * readP(A.reader()))
+        <div class=build>
+        <pre class="prettyprint" data-lang="Output">process1 exiting
+process2 exiting
+program exiting</pre>
+        </div>
+    </article>
+</slide>
 
-cout = A.writer()
-for i in xrange(N):
-  cout(i)
+<slide>
+    <hgroup>
+        <h2><span class="mono monoFirst">Process</span> and <span class="mono">Spawn</span></h2>
+    </hgroup>
+    <article class="smaller">
+          <pre class="prettyprint" data-lang="python">@process
+def process1():
+    time.sleep(1)  # Sleep 1 second
+    print 'process1 exiting'
 
-pycsp.shutdown()
-          </pre>
+@process
+def process2():
+    time.sleep(2)  # Sleep 2 seconds
+    print 'process2 exiting'
+
+Spawn(process1(), process2())  # Non-blocking
+print 'processes started'
+shutdown()  # Blocks
+print 'program terminating'</pre>
+
+        <div class=build>
+        <pre class="prettyprint" data-lang="Output">processes started
+process1 exiting
+process2 exiting
+program terminating</pre>
+        </div>
     </article>
 </slide>
 
