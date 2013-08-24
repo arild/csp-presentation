@@ -1,0 +1,42 @@
+
+.title-slide hgroup h1 {
+    font-size: 45px !important;
+}
+
+article > ul {
+    padding-left: 0px;
+    margin-left: 0px;
+}
+
+article ul > li {
+    list-style: none;
+    list-style-type: none;
+    margin-bottom: 1em;
+}
+
+article ul li ul li {
+    list-style: none;
+    list-style-type: none;
+    margin-bottom: 0.5em;
+}
+
+article ul > li:before {
+    content: "";
+}
+
+.outlineHighlight {
+    font-weight: bold;
+    font-size: 130%;
+}
+
+.quoteLink {
+    padding-left: 0px;
+    padding-top: 20px;
+}
+
+.quoteLink a {
+    color: deepskyblue;
+    border-bottom: 2px solid deepskyblue;
+    text-decoration: none;
+}
+

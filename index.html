@@ -19,6 +19,7 @@ URL: https://code.google.com/p/io-2012-slides
     <meta name="apple-mobile-web-app-capable" content="yes">
     <link rel="stylesheet" media="all" href="theme/css/default.css">
     <link rel="stylesheet" media="only screen and (max-device-width: 480px)" href="theme/css/phone.css">
+    <link rel="stylesheet" media="all" href="custom.css">
     <base target="_blank">
     <!-- This amazingness opens all links in a new tab. -->
     <script data-main="js/slides" src="js/require-1.0.8.min.js"></script>
@@ -97,9 +98,7 @@ URL: https://code.google.com/p/io-2012-slides
     <article>
         <ul>
             <li>CSP Overview</li>
-            <li>
-                <large><b>Motivation</b></large>
-            </li>
+            <li class="outlineHighlight">Motivation</li>
             <li>CSP vs Actor Model</li>
             <li>Introduction to CSP
                 <ul>
@@ -149,10 +148,13 @@ URL: https://code.google.com/p/io-2012-slides
             <img width="45%" src="images/shared_memory_11.svg"/>
             <img width="45%" style="float: right" src="images/shared_memory_12.svg"/>
         </p>
-        <p>Program crash in critical region corrupts memory.</p>
-        <ul>
-            <li>Difficult to reason about</li>
-            <li>Hard to recover from failure</li>
+        <ul>Program crash in critical region corrupts memory
+            <li>
+                <ul>
+                    <li>Difficult to reason about</li>
+                    <li>Hard to recover from failure</li>
+                </ul>
+            </li>
         </ul>
 
         <footer class="source">slide inspired by: <a href="http://www.infoq.com/presentations/erlang-software-for-a-concurrent-world">link</a></footer>
@@ -168,8 +170,13 @@ URL: https://code.google.com/p/io-2012-slides
             <img src="images/shared_memory_2.png"/>
         </p>
         <br>
-        <p>Where is shared memory physically located?</p>
-        <p>Even harder to recover from failure</p>
+        <ul>Where is shared memory physically located?
+            <li>
+                <ul>
+                <li>Even harder to recover from failure</li>
+                </ul>
+            </li>
+        </ul>
 
         <footer class="source">slide inspired by: <a href="http://www.infoq.com/presentations/erlang-software-for-a-concurrent-world">link</a></footer>
     </article>
@@ -207,8 +214,11 @@ URL: https://code.google.com/p/io-2012-slides
             has good support for concurrency
         </q>
         <br>
-        <a href="http://www.guug.de/veranstaltungen/ffg2003/papers/ffg2003-armstrong.pdf">Concurrency Oriented
-            Programming in Erlang</a>
+        <p class="quoteLink">
+            <a href="http://www.guug.de/veranstaltungen/ffg2003/papers/ffg2003-armstrong.pdf">Concurrency Oriented
+                Programming in Erlang</a>
+
+        </p>
 
         <div class="author">
             Joe Armstrong
@@ -226,7 +236,7 @@ URL: https://code.google.com/p/io-2012-slides
             <li>
                 Motivation
             </li>
-            <li><b>CSP vs Actor Model</b></li>
+            <li class="outlineHighlight">CSP vs Actor Model</li>
             <li>Introduction to CSP
                 <ul>
                     <li>Code examples in PyCSP</li>
@@ -250,10 +260,10 @@ URL: https://code.google.com/p/io-2012-slides
                 Motivation
             </li>
             <li>CSP vs Actor Model</li>
-            <li><b>Introduction to CSP
+            <li class="outlineHighlight">Introduction to CSP
                 <ul>
                     <li>Code examples in PyCSP</li>
-                </ul></b>
+                </ul>
             </li>
             <li>Travelling Salesman Problem in PyCSP</li>
             <li>Summary</li>
@@ -313,7 +323,7 @@ pycsp.shutdown()
                     <li>Code examples in PyCSP</li>
                 </ul>
             </li>
-            <li><b>Travelling Salesman Problem in PyCSP</b></li>
+            <li class="outlineHighlight">Travelling Salesman Problem in PyCSP</li>
             <li>Summary</li>
         </ul>
     </article>
