@@ -292,12 +292,13 @@ Parallel(process1(), process2())  # Blocks
 print 'program terminating'</pre>
 
         <div class=build>
-        <pre class="prettyprint" data-lang="Output">process1 exiting
+        <pre class="prettyprint plain">process1 exiting
 process2 exiting
 program exiting</pre>
         </div>
     </article>
 </slide>
+
 
 <slide>
     <hgroup>
@@ -320,7 +321,7 @@ shutdown()  # Blocks
 print 'program terminating'</pre>
 
         <div class=build>
-        <pre class="prettyprint" data-lang="Output">processes started
+        <pre class="prettyprint plain">processes started
 process1 exiting
 process2 exiting
 program terminating</pre>
@@ -331,13 +332,33 @@ program terminating</pre>
 
 <slide>
     <hgroup>
-        <h2>Processes in PyCSP</h2>
+        <h2><span class="mono monoFirst">Channels</span></h2>
     </hgroup>
-    <article>
-      <pre class="prettyprint" data-lang="python">
-</pre>
+    <article class="smaller">
+          <pre class="prettyprint" data-lang="python">@process
+def process1(chan_out):
+    chan_out('Hello process2')  # Blocks
+    print 'process1 exiting'
+
+@process
+def process2(chan_in):
+    time.sleep(1)  # Sleep 1 second
+    print 'reading from channel'
+    msg = chan_in()  # Blocks
+    print 'message received: ', msg
+
+chan = Channel()
+Parallel(process1(chan.writer()), process2(chan.reader()))</pre>
+
+        <div class=build>
+
+        <pre class="prettyprint plain">reading from channel
+message received:  Hello process2
+process1 exiting</pre>
+        </div>
     </article>
 </slide>
+
 
 <slide>
     <hgroup>

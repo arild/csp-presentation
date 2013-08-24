@@ -50,3 +50,12 @@ article ul > li:before {
     font-family: monospace;
 }
 
+slide article pre[data-lang].plain:after{
+    content: 'OUTPUT'
+}
+
+slide article pre.plain span.kwd,
+slide article pre.plain span.typ {
+    color: #515151 !important;
+}
+
