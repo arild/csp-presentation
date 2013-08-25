@@ -23,19 +23,8 @@ var SLIDE_CONFIG = {
   // Author information
   presenters: [{
     name: 'Arild Nilsen',
-    company: 'Bekk Consulting',
-    gplus: 'http://plus.google.com/1234567890',
-    twitter: '@yourhandle',
-    www: 'http://www.you.com',
-    github: 'http://github.com/arild'
-  }/*, {
-    name: 'Second Name',
-    company: 'Job Title, Google',
-    gplus: 'http://plus.google.com/1234567890',
-    twitter: '@yourhandle',
-    www: 'http://www.you.com',
-    github: 'http://github.com/you'
-  }*/]
+    company: 'Bekk Consulting'
+  }]
 };
 
 

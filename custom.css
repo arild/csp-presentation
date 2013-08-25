@@ -34,7 +34,7 @@ article ul > li:before {
     padding-top: 20px;
 }
 
-.quoteLink a {
+.quoteLink a, .thank-you-slide a {
     color: deepskyblue;
     border-bottom: 2px solid deepskyblue;
     text-decoration: none;
@@ -61,3 +61,6 @@ slide article pre.plain span.typ {
     color: #515151 !important;
 }
 
+slides slide.thank-you-slide {
+    background: #797979 !important;
+}
