@@ -414,6 +414,30 @@ else:
 
 <slide>
     <hgroup>
+        <h2><span class="mono">PriSelect</span><span class="padLeft padRight">&ndash;</span>timeout and skip guards</h2>
+    </hgroup>
+    <article >
+          <pre class="prettyprint" data-lang="python">@process
+def Process1(input_chan):
+    guards = [InputGuard(input_chan), SkipGuard()]
+    (chan, msg) = PriSelect(guards)  # Always perform skip guard last
+    if chan == input_chan:
+        print 'input read: ', msg
+    else:
+        print 'no input'
+
+input = Channel()
+Spawn(Process1(input.reader()))
+
+guard = OutputGuard(input.writer(), msg='hello process1')
+PriSelect(guard, TimeoutGuard(seconds=1))
+</pre>
+    </article>
+</slide>
+
+
+<slide>
+    <hgroup>
         <h2>Outline</h2>
     </hgroup>
     <article>
