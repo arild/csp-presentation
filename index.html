@@ -278,7 +278,7 @@ Parallel(process1(), process2())  # Blocks
 print 'program terminating'</pre>
 
         <div class=build>
-        <pre class="prettyprint plain">process1 exiting
+        <pre class="prettyprint plain" data-lang="plain">process1 exiting
 process2 exiting
 program exiting</pre>
         </div>
@@ -307,7 +307,7 @@ shutdown()  # Blocks
 print 'program terminating'</pre>
 
         <div class=build>
-        <pre class="prettyprint plain">processes started
+        <pre class="prettyprint plain" data-lang="plain">processes started
 process1 exiting
 process2 exiting
 program terminating</pre>
@@ -338,7 +338,7 @@ Parallel(process1(chan.writer()), process2(chan.reader()))</pre>
 
         <div class=build>
 
-        <pre class="prettyprint plain">reading from channel
+        <pre class="prettyprint plain" data-lang="plain">reading from channel
 message received:  Hello process2
 process1 exiting</pre>
         </div>
