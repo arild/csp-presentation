@@ -442,13 +442,79 @@ PriSelect(guard, TimeoutGuard(seconds=1))
     </article>
 </slide>
 
+
 <slide>
     <hgroup>
-        <h2>About TSP...</h2>
+        <h2>TSP Definition</h2>
     </hgroup>
     <article>
+        <ul>
+            <li>Given a list of cities and the distances between each pair of cities, what is the shortest possible route that visits each city exactly once and returns to the origin city?</li>
+            <li><br>Can be modeled as an complete, undirected weighted graph</li>
+            <li><br>Complexity for brute force approach: <b>O(n!)</b></li>
+        </ul>
     </article>
 </slide>
+
+
+<slide>
+    <hgroup>
+        <h2>Example Graph &ndash; 4 cities</h2>
+    </hgroup>
+    <article>
+        <article class="flexbox vcenter">
+            <img src="images/tsp1.svg" alt="Description" title="Description">
+        </article>
+
+    </article>
+</slide>
+
+
+<slide>
+    <hgroup>
+        <h2>Example Route Lengths</h2>
+    </hgroup>
+    <article class="flexbox vcenter">
+        <img width="75%" src="images/tsp3.svg" alt="Description" title="Description">
+    </article>
+</slide>
+
+
+<slide>
+    <hgroup>
+        <h2>Parallelization &ndash; generating tasks</h2>
+    </hgroup>
+    <article>
+        <article class="flexbox vcenter">
+            <img width="60%" src="images/tsp4.svg" alt="Description" title="Description">
+        </article>
+        <br>
+        <ul>
+            <li>Sub-routes "AB", "AC", and "AD" used as worker tasks</li>
+        </ul>
+    </article>
+</slide>
+
+
+<slide>
+    <hgroup>
+        <h2>Branch-and-Bound Optimization</h2>
+    </hgroup>
+    <article>
+        <article class="flexbox vcenter">
+            <img width="65%" src="images/tsp5.svg" alt="Description" title="Description">
+        </article>
+        <br>
+        <ul>
+            <li>Discard sub-routes that already are longer than current shortest route</li>
+        </ul>
+
+    </article>
+</slide>
+
+
+
+
 
 <slide>
     <hgroup>
