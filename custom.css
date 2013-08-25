@@ -41,13 +41,15 @@ article ul > li:before {
 }
 
 .mono {
-    padding: 0 15px;
     font-family: monospace;
 }
 
-.monoFirst {
-    padding-left: 0;
-    font-family: monospace;
+.padLeft {
+    padding-left:  15px;
+}
+
+.padRight {
+    padding-right: 15px;
 }
 
 slide article pre[data-lang].plain:after{

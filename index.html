@@ -84,7 +84,7 @@ URL: https://code.google.com/p/io-2012-slides
                 <ul>
                     <li>Sequential <b>processes</b></li>
                     <li>Synchronous communication through <b>channels</b></li>
-                    <li>Multiplexing of channels with <b>guards</b></li>
+                    <li>Multiplexing of channels with <b>choice/alternation</b></li>
                 </ul>
             </li>
         </ul>
@@ -275,16 +275,16 @@ URL: https://code.google.com/p/io-2012-slides
 
 <slide>
     <hgroup>
-        <h2><span class="mono monoFirst">Process</span> and <span class="mono">Parallel</span></h2>
+        <h2><span class="mono padRight">Process</span> and <span class="mono padLeft">Parallel</span></h2>
     </hgroup>
     <article>
           <pre class="prettyprint" data-lang="python">@process
-def process1():
+def Process1():
     time.sleep(1)  # Sleep 1 second
     print 'process1 exiting'
 
 @process
-def process2():
+def Process2():
     time.sleep(2)  # Sleep 2 seconds
     print 'process2 exiting'
 
@@ -302,20 +302,20 @@ program exiting</pre>
 
 <slide>
     <hgroup>
-        <h2><span class="mono monoFirst">Process</span> and <span class="mono">Spawn</span></h2>
+        <h2><span class="mono padRight">Process</span> and <span class="mono padLeft">Spawn</span></h2>
     </hgroup>
     <article class="smaller">
           <pre class="prettyprint" data-lang="python">@process
-def process1():
+def Process1():
     time.sleep(1)  # Sleep 1 second
     print 'process1 exiting'
 
 @process
-def process2():
+def Process2():
     time.sleep(2)  # Sleep 2 seconds
     print 'process2 exiting'
 
-Spawn(process1(), process2())  # Non-blocking
+Spawn(Process1(), Process2())  # Non-blocking
 print 'processes started'
 shutdown()  # Blocks
 print 'program terminating'</pre>
@@ -332,16 +332,16 @@ program terminating</pre>
 
 <slide>
     <hgroup>
-        <h2><span class="mono monoFirst">Channels</span></h2>
+        <h2><span class="mono">Channel</span><span class="padLeft padRight">&ndash;</span>semantics</h2>
     </hgroup>
     <article class="smaller">
           <pre class="prettyprint" data-lang="python">@process
-def process1(chan_out):
+def Process1(chan_out):
     chan_out('Hello process2')  # Blocks
     print 'process1 exiting'
 
 @process
-def process2(chan_in):
+def Process2(chan_in):
     time.sleep(1)  # Sleep 1 second
     print 'reading from channel'
     msg = chan_in()  # Blocks
@@ -356,6 +356,58 @@ Parallel(process1(chan.writer()), process2(chan.reader()))</pre>
 message received:  Hello process2
 process1 exiting</pre>
         </div>
+    </article>
+</slide>
+
+
+<slide>
+    <hgroup>
+        <h2><span class="mono">Channel</span><span class="padLeft padRight">&ndash;</span>flexibility</h2>
+    </hgroup>
+    <article >
+          <pre class="prettyprint" data-lang="python">@process
+def Worker(input_chan):
+    (output_chan, work_func) = input_chan()
+    result = work_func()
+    output_chan(result)
+
+def work():
+    return 2 * 2
+
+input_chan = Channel()
+Spawn(Worker(input_chan.reader()))
+
+result_chan = Channel()
+msg = (result_chan.writer(), work)  # Careful, 'work' is shared reference
+
+input_chan.writer()(msg)
+result = result_chan.reader()()  # Get result</pre>
+    </article>
+</slide>
+
+
+<slide>
+    <hgroup>
+        <h2><span class="mono">AltSelect</span><span class="padLeft padRight">&ndash;</span>performs choice from list of guards</h2>
+    </hgroup>
+    <article >
+          <pre class="prettyprint" data-lang="python">@process
+def Process1(input_chan, output_chan):
+    input_guard = InputGuard(input_chan)
+    output_guard = OutputGuard(output_chan, msg='hello from process1')
+    (chan, msg) = AltSelect(input_guard, output_guard)
+    if chan == input_chan:
+        print 'input read: ', msg
+    elif chan == output_chan:
+        print 'output written'
+
+input, output = Channel(), Channel()
+Spawn(Process1(input.reader(), output.writer()))
+
+if random.choice([True, False]):
+    input.writer()('hello process1')
+else:
+    output.reader()()</pre>
     </article>
 </slide>
 
