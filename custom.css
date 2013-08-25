@@ -64,3 +64,16 @@ slide article pre.plain span.typ {
 slides slide.thank-you-slide {
     background: #797979 !important;
 }
+
+aside.gdbar {
+    width: 265px !important;
+    height: 83px !important;
+    background: #797979 !important;
+}
+
+aside.gdbar img {
+    width: auto !important;
+    height: auto !important;
+    margin: 15px 20px !important;
+}
+
