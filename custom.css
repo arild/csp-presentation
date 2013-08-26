@@ -3,9 +3,9 @@
     font-size: 45px !important;
 }
 
-article > ul {
-    padding-left: 0px;
-    margin-left: 0px;
+article > ul, article .noListPadding > ul {
+    padding-left: 0px !important;
+    margin-left: 0px !important;
 }
 
 article ul > li {

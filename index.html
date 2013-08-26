@@ -152,7 +152,7 @@ URL: https://code.google.com/p/io-2012-slides
         <ul>Where is shared memory physically located?
             <li>
                 <ul>
-                <li>Even harder to recover from failure</li>
+                    <li>Even harder to recover from failure</li>
                 </ul>
             </li>
         </ul>
@@ -221,6 +221,44 @@ URL: https://code.google.com/p/io-2012-slides
             <li>Travelling Salesman Problem in PyCSP</li>
             <li>Summary</li>
         </ul>
+    </article>
+</slide>
+
+
+<slide>
+    <hgroup>
+        <h2>Channel vs Mailbox</h2>
+    </hgroup>
+    <article>
+        <div style="margin: 0 auto">
+            <div class="noListPadding" style="float: left; width: 51%">
+                <img width="100%" src="images/csp_illustration1.png"/>
+                <br><br>
+                <ul>
+                    <li>
+                        CSP
+                        <ul>
+                            <li>Communication through channels</li>
+                            <li>Processes are "anonymous"</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+            <div class="noListPadding" style="float: right; width: 43%; padding-top: 10px">
+                <img width="100%" src="images/actor_illustration1.png"/>
+                <br><br>
+                <ul>
+                    <li>
+                        Actor Model
+                        <ul>
+                            <li>Point-to-point communication</li>
+                            <li>No anonymity</li>
+                        </ul>
+                    </li>
+                </ul>
+
+            </div>
+        </div>
     </article>
 </slide>
 
@@ -520,7 +558,7 @@ PriSelect(guard, TimeoutGuard(seconds=1))
         <h2>Demo</h2>
     </hgroup>
     <article>
-      <a href="https://github.com/arild/fagdag_aug2013">https://github.com/arild/fagdag_aug2013</a>
+        <a href="https://github.com/arild/fagdag_aug2013">https://github.com/arild/fagdag_aug2013</a>
     </article>
 </slide>
 
