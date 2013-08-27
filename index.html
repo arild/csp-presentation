@@ -322,7 +322,7 @@ def Process2():
     time.sleep(2)  # Sleep 2 seconds
     print 'process2 exiting'
 
-Parallel(process1(), process2())  # Blocks
+Parallel(Process1(), Process2())  # Blocks
 print 'program terminating'</pre>
 
         <div class=build>
@@ -382,7 +382,7 @@ def Process2(chan_in):
     print 'message received: ', msg
 
 chan = Channel()
-Parallel(process1(chan.writer()), process2(chan.reader()))</pre>
+Parallel(Process1(chan.writer()), Process2(chan.reader()))</pre>
 
         <div class=build>
 
