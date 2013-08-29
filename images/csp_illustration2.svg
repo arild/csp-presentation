@@ -10,13 +10,13 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="2116.554"
-   height="1119.0546"
+   width="2116.55"
+   height="1119.05"
    id="svg2"
    version="1.1"
    inkscape:version="0.48.4 r9939"
-   sodipodi:docname="copy of csp_illustration21.svg"
-   inkscape:export-filename="/home/arild/workspace/fagdag_aug2013/images/csp_illustration2.png"
+   sodipodi:docname="csp_illustration2.svg"
+   inkscape:export-filename="/home/arild/workspace/csp-presentation/images/csp_illustration2.png"
    inkscape:export-xdpi="90"
    inkscape:export-ydpi="90">
   <defs
@@ -688,7 +688,7 @@
      inkscape:pageshadow="2"
      inkscape:zoom="0.32"
      inkscape:cx="1018.8095"
-     inkscape:cy="290.16683"
+     inkscape:cy="290.16686"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -726,7 +726,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -734,7 +734,7 @@
      inkscape:label="Layer 1"
      inkscape:groupmode="layer"
      id="layer1"
-     transform="translate(743.50749,-1580.8407)">
+     transform="translate(743.50749,-1580.8453)">
     <flowRoot
        xml:space="preserve"
        id="flowRoot5078"
@@ -1109,5 +1109,5 @@
            height="906.25"
            x="456.25"
            y="1360.9874" /></flowRegion><flowPara
-         id="flowPara4743"></flowPara></flowRoot>  </g>
+         id="flowPara4743" /></flowRoot>  </g>
 </svg>
