@@ -16,7 +16,7 @@ import pycsp.current
 
 import inspect
 
-class InputGuard:
+class InputGuard(object):
     """
     InputGuard wraps an input ch_end for use with AltSelect.
 
@@ -45,14 +45,14 @@ class InputGuard:
     """
     def __init__(self, ch_end, action=None):
         try:
-            if ch_end.op == READ:
+            if ch_end._op == READ:
                 self.g = (ch_end, action)
             else:
                 raise Exception('InputGuard requires an input ch_end')
         except AttributeError:
             raise Exception('Cannot use ' + str(ch_end) + ' as input ch_end')
 
-class OutputGuard:
+class OutputGuard(object):
     """
     OutputGuard wraps an output ch_end for use with AltSelect.
 
@@ -82,7 +82,7 @@ class OutputGuard:
     """
     def __init__(self, ch_end, msg, action=None):
         try:
-            if ch_end.op == WRITE:
+            if ch_end._op == WRITE:
                 self.g = (ch_end, msg, action)
             else:
                 raise Exception('OutputGuard requires an output ch_end')
@@ -171,10 +171,10 @@ def PriSelect(*guards):
     if pycsp.current.trace:
         import pycsp.common.trace as trace
         a = trace.Alternation(L)
-        a.set_execute_frame(-3)
+        a._set_execute_frame(-3)
     else:
         a = Alternation(L)
-        a.set_execute_frame(-2)
+        a._set_execute_frame(-2)
 
     return a.execute()
 
@@ -199,7 +199,7 @@ def FairSelect(*guards):
     for item in guards:
         try:
             chan_name = item.g[0].channel.name
-            if H.has_key(chan_name):
+            if chan_name in H:
                 L.append((H[chan_name], item.g))
             else:
                 L.append((0, item.g))
@@ -214,10 +214,10 @@ def FairSelect(*guards):
     if pycsp.current.trace:
         import pycsp.common.trace as trace
         a = trace.Alternation(L)
-        a.set_execute_frame(-3)
+        a._set_execute_frame(-3)
     else:
         a = Alternation(L)
-        a.set_execute_frame(-2)
+        a._set_execute_frame(-2)
 
     result =  a.execute()
     try:
@@ -253,16 +253,16 @@ class AltHistory(object):
     getInstance = classmethod(getInstance)
 
     def get_history(self, alt_key):
-        if not self.history.has_key(alt_key):
+        if alt_key not in self.history:
             self.history[alt_key] = {}
         return self.history[alt_key]
 
     def update_history(self, alt_key, chan_name):
-        if not self.history.has_key(alt_key):
+        if alt_key not in self.history:
             self.history[alt_key] = {}
 
         H = self.history[alt_key]
-        if H.has_key(chan_name):
+        if chan_name in H:
             H[chan_name] += 1
         else:
             H[chan_name] = 1

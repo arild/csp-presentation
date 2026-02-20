@@ -1,6 +1,6 @@
 
 import sys
-import logger as Logger
+from logger import get_logger, init as logger_init, shutdown as logger_shutdown
 from tsp import *
 from pycsp import *
 from timer import *
@@ -17,7 +17,7 @@ def Worker(id, init_chan, task_chan, result_chan, shortest_route_subscribe_chan,
     shortest_route_chan = shortest_route_chan.reader()
 
     distance_matrix = init_chan()
-    shortest_distance = sys.maxint
+    shortest_distance = sys.maxsize
     tasks = []
     while True:
         guards = [InputGuard(shortest_route_chan)]
@@ -44,14 +44,14 @@ def Worker(id, init_chan, task_chan, result_chan, shortest_route_subscribe_chan,
 
 @multiprocess
 def Master(init_chan, task_chan, result_chan, shortest_route_chan, num_cities, task_depth):
-    logger = Logger.get_logger('master')
+    logger = get_logger('master')
     distance_matrix = generate_distance_matrix(num_cities)
 
     # Generate tasks
     tasks = get_sub_routes(distance_matrix, task_depth)
     logger.log('Number of tasks: ', len(tasks))
 
-    shortest_route = Route(distance=sys.maxint)
+    shortest_route = Route(distance=sys.maxsize)
     while True:
         try:
             guards = [OutputGuard(init_chan, msg=distance_matrix),
@@ -85,25 +85,28 @@ def main(num_cities, task_depth, num_workers):
     broadcast_publish_chan = Channel('broadcast_publish')
     broadcast_subscribe_chan = Channel('broadcast_subscribe')
 
-    Logger.init()
+    logger_init()
 
     workers = []
     for i in range(0, num_workers):
-        logger = Logger.get_logger('worker')
+        logger = get_logger('worker')
         workers.append(Worker(i, init_channel.reader(), task_channel.reader(), result_channel.writer(), broadcast_subscribe_chan.writer(), logger))
 
     Parallel(Master(init_channel.writer(), task_channel.writer(), result_channel.reader(), broadcast_publish_chan.writer(), num_cities, task_depth),
              workers,
              BroadcastRouter(broadcast_publish_chan.reader(), broadcast_subscribe_chan.reader()))
 
-    Logger.shutdown()
+    logger_shutdown()
 
     shutdown()
 
 
 if __name__ == "__main__":
+    import multiprocessing
+    multiprocessing.set_start_method('fork')
+
     if len(sys.argv) != 4:
-        print 'usage <num cities<task depth><num workers>'
+        print('usage <num cities> <task depth> <num workers>')
         sys.exit(0)
     num_cities = int(sys.argv[1])
     task_depth = int(sys.argv[2])
@@ -112,4 +115,4 @@ if __name__ == "__main__":
     timer = Timer()
     with timer:
         main(num_cities, task_depth, num_workers)
-    print 'Execution time in seconds: ', timer.duration_in_seconds()
+    print('Execution time in seconds: ', timer.duration_in_seconds())
