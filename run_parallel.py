@@ -1,5 +1,6 @@
 
 import sys
+from functools import reduce
 from tsp import *
 from pycsp import *
 from timer import *
@@ -24,7 +25,7 @@ def Master(init_chan, task_chan, result_chan, num_cities, task_depth):
     # Generate tasks
     tasks = get_sub_routes(distance_matrix, task_depth)
     num_tasks = len(tasks)
-    print 'Num tasks: ', num_tasks
+    print('Num tasks: ', num_tasks)
 
     results = []
     while len(results) < num_tasks:
@@ -42,8 +43,8 @@ def Master(init_chan, task_chan, result_chan, num_cities, task_depth):
     poison(task_chan)
 
     shortest_route = reduce(lambda res, cur: cur if cur.distance < res.distance else res, results)
-    print 'Shortest path: ', shortest_route.path
-    print 'Distance: ', shortest_route.distance
+    print('Shortest path: ', shortest_route.path)
+    print('Distance: ', shortest_route.distance)
 
 
 def main(num_cities, task_depth, num_workers):
@@ -56,8 +57,11 @@ def main(num_cities, task_depth, num_workers):
 
 
 if __name__ == "__main__":
+    import multiprocessing
+    multiprocessing.set_start_method('fork')
+
     if len(sys.argv) != 4:
-        print 'usage <num cities<task depth><num workers>'
+        print('usage <num cities> <task depth> <num workers>')
         sys.exit(0)
     num_cities = int(sys.argv[1])
     task_depth = int(sys.argv[2])
@@ -66,4 +70,4 @@ if __name__ == "__main__":
     timer = Timer()
     with timer:
         main(num_cities, task_depth, num_workers)
-    print 'Execution time in seconds: ', timer.duration_in_seconds()
+    print('Execution time in seconds: ', timer.duration_in_seconds())

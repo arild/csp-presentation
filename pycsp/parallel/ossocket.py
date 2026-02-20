@@ -10,15 +10,14 @@ See LICENSE.txt for licensing details (MIT License).
 
 import time
 import errno
-import os
+import os, platform
 import socket
 import sys
-import threading
 from pycsp.parallel.exceptions import *
 from pycsp.parallel.configuration import *
 from pycsp.parallel.const import *
 
-
+PLATFORM_SYSTEM = platform.system()
 STDERR_OUTPUT = False
 
 conf = Configuration()    
@@ -29,20 +28,20 @@ if os.name != "nt":
     import struct
     
     def _get_interface_ip(ifname):
-    	s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    	ip = socket.inet_ntoa(fcntl.ioctl(
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        ip = socket.inet_ntoa(fcntl.ioctl(
                 s.fileno(),
                 0x8915,  # SIOCGIFADDR
-                struct.pack('256s', ifname[:15])
-    		)[20:24])
+                struct.pack('256s', ifname[:15].encode('utf-8'))
+                )[20:24])
         s.close()
         return ip
     
 def _get_ip():
     ip = socket.gethostbyname(socket.gethostname())
     if ip.startswith("127.") and os.name != "nt":
-    	interfaces = ["eth0","eth1","eth2","wlan0","wlan1","wifi0","ath0","ath1","ppp0"]
-    	for ifname in interfaces:
+        interfaces = ["eth0","eth1","eth2","wlan0","wlan1","wifi0","ath0","ath1","ppp0"]
+        for ifname in interfaces:
             try:
                 ip = _get_interface_ip(ifname)
                 break;
@@ -65,7 +64,6 @@ def _connect(addr, reconnect=True):
     while (not connected):
         try:
             
-            #print(str(threading.currentThread())+"Creating connection to "+str(addr))
 
             # Create IPv4 TCP socket (TODO: add support for IPv6)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -82,11 +80,11 @@ def _connect(addr, reconnect=True):
                 return False
             
             if STDERR_OUTPUT:
-                sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, e.message))
+                sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, str(e)))
             if sock:
                 sock.close()
             if e.errno != errno.ECONNREFUSED:            
-                raise Exception("Fatal error: Could not open socket: " + e.message)
+                raise Exception("Fatal error: Could not open socket: " + str(e))
         if not connected:
             if t1 == None:
                 t1 = time.time()
@@ -110,6 +108,13 @@ def start_server(server_addr=('', 0)):
     
     while (not ok):
         try:
+            if PLATFORM_SYSTEM == 'Darwin':
+                # This is an awfull hack for darwin systems. There is a flaw in
+                # the module function socket.bind(addr), which may cause socket.bind(addr)
+                # to block when multiple OS processes try to bind at the same time.
+                time.sleep(0.1)
+
+
             # Create IPv4 TCP socket (TODO: add support for IPv6)
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
@@ -118,10 +123,10 @@ def start_server(server_addr=('', 0)):
 
             # Enable reuse of sockets in TIME_WAIT state.  
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
+            
             # Bind to address
             sock.bind(server_addr)
-            
+
             # Initiate listening for connections. Create queue of 5 for unaccepted connections
             sock.listen(5)
 
@@ -129,11 +134,11 @@ def start_server(server_addr=('', 0)):
             
         except socket.error as e:
             if STDERR_OUTPUT:
-                sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, e.message))
+                sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, str(e)))
             if sock:
                 sock.close()
             if e.errno != errno.EADDRINUSE:       
-                raise Exception("Fatal error: Could not bind to socket: " + e.message)
+                raise Exception("Fatal error: Could not bind to socket: " + str(e))
         if not ok:
             if t1 == None:
                 t1 = time.time()
@@ -173,7 +178,7 @@ def sendallNOcache(sock, data):
         sock.sendall(data)
     except socket.error as e:
         if STDERR_OUTPUT:
-            sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, e.message))
+            sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, str(e)))
             # TODO make exceptions depending on the error value
 
         raise SocketSendException()
@@ -187,16 +192,16 @@ def recvall(sock, msg_len):
     try:
         while msg_len_received < msg_len:
             chunk = sock.recv(msg_len - msg_len_received)
-            if chunk == '':
+            if chunk == b'':
                 raise SocketClosedException()
             msg_chunks.append(chunk)
             msg_len_received += len(chunk)
     except socket.error as e:
         if STDERR_OUTPUT:
-            sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, e.message))
+            sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, str(e)))
         raise SocketClosedException()
         
-    return "".join(msg_chunks)
+    return b"".join(msg_chunks)
 
 
 class ConnHandler(object):
@@ -204,7 +209,6 @@ class ConnHandler(object):
         self.cacheSockets = {}
 
     def updateCache(self, addr, sock):
-        #print(str(threading.currentThread())+"update cache with "+str(addr))
         if ENABLE_CACHE:
             if not addr in self.cacheSockets:
                 self.cacheSockets[addr] = sock
@@ -238,12 +242,12 @@ class ConnHandler(object):
             sock.sendall(data)
         except socket.error as e:
             if STDERR_OUTPUT:
-                sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, e.message))
+                sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, str(e)))
             # TODO make exceptions depending on the error value
 
             # Expire socket
             addr = None
-            for item in self.cacheSockets.items():
+            for item in list(self.cacheSockets.items()):
                 if (item[1] == sock):
                     addr = item[0]
                     self.forceclose(addr)
@@ -273,7 +277,7 @@ class ConnHandler(object):
                 ok = True
             except socket.error as e:
                 if STDERR_OUTPUT:
-                    sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, e.message))
+                    sys.stderr.write("PyCSP socket issue (%d): %s\n" % (e.errno, str(e)))
                 # TODO make exceptions depending on the error value
 
                 if new:
@@ -282,7 +286,7 @@ class ConnHandler(object):
                 else:
                     # Expire socket
                     addr = None
-                    for item in self.cacheSockets.items():
+                    for item in list(self.cacheSockets.items()):
                         if (item[1] == sock):
                             addr = item[0]
                             self.forceclose(addr)

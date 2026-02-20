@@ -8,11 +8,7 @@ See LICENSE.txt for licensing details (MIT License).
 
 # Imports
 import uuid
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 
 from pycsp.parallel import protocol
 from pycsp.parallel.exceptions import *
@@ -124,7 +120,12 @@ class Channel(object):
         
         # Check args
         if name == None and connect != None:
-            raise Exception("Must provide name when connecting to remote channel")
+            raise InfoException("Must provide name when connecting to remote channel")
+
+        # Set buffer
+        self.buffer = buffer
+        if self.buffer != 0 and connect != None:
+            raise InfoException("Do not specify buffer size when connecting to a hosted channel.")
 
         # Set name
         if name == None:
@@ -134,8 +135,10 @@ class Channel(object):
             if len(name) > 32:
                 raise Exception("Channel names are limited to 32 characters")
 
-            self.name=name
+            self.name= name
 
+        if type(self.name) != bytes:
+            self.name = self.name.encode()
 
         self._CM = protocol.ChannelMessenger()
 
@@ -155,7 +158,7 @@ class Channel(object):
                         raise InfoException("Reusing channel name in same process namespace")
 
                 # Get local channel home
-                self._channelhomethread = protocol.ChannelHomeThread(self.name, buffer)
+                self._channelhomethread = protocol.ChannelHomeThread(self.name, self.buffer)
                 self._channelhomethread.start()
                 self.address = self._channelhomethread.addr
 
@@ -169,6 +172,34 @@ class Channel(object):
         self._registered = False            
         self._register()
 
+
+    def __getstate__(self):
+        """
+        Enables channel mobility
+        """
+
+        # To be able to support the pickle module, we erase the reference
+        # to the channel home, before pickling.
+        # Also, the total number of namespace_references should be kept constant after
+        # a __getstate__ and a _restore
+
+        # Clear everything
+        odict = {}
+        
+        # Only save address and name
+        odict['_restore_info'] = (self.address, self.name)
+
+        return odict
+
+    def __setstate__(self, dict):
+        """
+        Enables channel end mobility
+        """        
+
+        self.__dict__.update(dict)
+
+        # Reconnect to channel
+        Channel.__init__(self, name=self._restore_info[1], connect=self._restore_info[0])
 
 
     def _register(self):
@@ -231,7 +262,7 @@ class Channel(object):
 
         self._check_termination()
 
-        print('We should not get here in read!!!' + str(p.state))
+        print(('We should not get here in read!!!' + str(p.state)))
         return None
 
     
@@ -257,7 +288,7 @@ class Channel(object):
 
         self._check_termination()
 
-        print('We should not get here in write!!! ' + str(p.state) + ' ' + str(msg))
+        print(('We should not get here in write!!! ' + str(p.state) + ' ' + str(msg)))
         return None
     
     def reader(self):
@@ -331,20 +362,22 @@ class Channel(object):
 
     # syntactic sugar: Channel() * N
     def __mul__(self, multiplier):
-        new = [self]
-        for i in range(multiplier-1):
-            new.append(Channel())
-        return new
+        if self._channelhomethread:
+            new = [self]
+            for i in range(multiplier-1):
+                new.append(Channel(buffer=self.buffer))
+            return new
+        else:
+            raise InfoException("Only hosted channels may be multiplied. Such as Channel()*10.")
 
     # syntactic sugar: N * Channel()
     def __rmul__(self, multiplier):
         return self.__mul__(multiplier)
 
 
-class ChannelEnd:
+class ChannelEnd(object):
     def __init__(self, channel):
-
-
+        
         self.channel = channel
         self._op = WRITE
 
@@ -353,7 +386,10 @@ class ChannelEnd:
         self._ispoisoned = False
 
         self._restore_info = None
-
+        
+    def __lt__(self, other):
+        # Needed for sorting in FairSelect
+        return self
 
     def __getstate__(self):
         """
@@ -378,8 +414,8 @@ class ChannelEnd:
     def __setstate__(self, dict):
         """
         Enables channel end mobility
-        """        
-
+        """
+                
         self.__dict__.update(dict)
 
         # restore Channel immediately, as the receiving end must register a new channel reference, before
@@ -409,6 +445,9 @@ class ChannelEnd:
             self.__call__ = self._poison
             self._ispoisoned = True
 
+        # As a final action. The channel end should be disconnected.
+        self.disconnect()
+            
     def _retire(self, *ignore):
         raise ChannelRetireException()
 
@@ -433,6 +472,9 @@ class ChannelEnd:
             self.channel._retire(direction=self._op)
             self.__call__ = self._retire
             self._isretired = True
+
+        # As a final action. The channel end should be disconnected.
+        self.disconnect()
 
     def __repr__(self):
         return "<ChannelEndWrite on channel named %s>" % self.channel.name
@@ -483,10 +525,11 @@ class ChannelEnd:
 
     
 class ChannelEndWrite(ChannelEnd):
+        
     def __init__(self, channel):
         ChannelEnd.__init__(self, channel)
         self._op = WRITE
-
+ 
     def __call__(self, msg):
         if not self.channel:
             raise FatalException("The user have tried to communicate on a channel end which have been moved to another process")

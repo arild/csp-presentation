@@ -57,7 +57,7 @@ def get_sub_routes(distance_matrix, depth, current_route=Route()):
 
 Assumes that start node is 0,0 in distance matrix
 """
-def find_shortest_route(distance_matrix, current_route, current_shortest_distance=sys.maxint):
+def find_shortest_route(distance_matrix, current_route, current_shortest_distance=sys.maxsize):
     max_path_length = len(distance_matrix)
 
     def get_remaining_vertices():

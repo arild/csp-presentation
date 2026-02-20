@@ -7,14 +7,13 @@ See LICENSE.txt for licensing details (MIT License).
 """
 
 # Imports
-import threading
-from scheduling import Scheduler
-from channel import ChannelReq
-from process import Process
+from pycsp.greenlets.scheduling import Scheduler
+from pycsp.greenlets.channel import ChannelReq
+from pycsp.greenlets.process import Process
 from pycsp.common.const import *
 
 # Classes
-class Guard():
+class Guard(object):
     """
     The empty interface of a guard.
     """

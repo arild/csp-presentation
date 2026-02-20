@@ -11,12 +11,10 @@ import types
 import uuid
 import threading
 
-from multiprocessing import Process
-from multiprocessing.sharedctypes import RawValue
+import multiprocessing
 
 from pycsp.parallel.dispatch import SocketDispatcher
 from pycsp.parallel.protocol import RemoteLock
-from pycsp.parallel.channel import Channel, ChannelEndRead, ChannelEndWrite
 from pycsp.parallel.const import *
 from pycsp.parallel.configuration import *
 from pycsp.parallel.exceptions import *
@@ -24,8 +22,8 @@ from pycsp.parallel.exceptions import *
 conf = Configuration()
 
 # Decorators
-def multiprocess(func=None, host='', port=None):
-    """ @multiprocess(host='', port=None)
+def multiprocess(func=None, pycsp_host='', pycsp_port=None):
+    """ @multiprocess(pycsp_host='', pycsp_port=None)
 
     @multiprocess decorator for making a function into a CSP MultiProcess factory.
     Each generated CSP process is implemented as a single OS process.
@@ -41,7 +39,7 @@ def multiprocess(func=None, host='', port=None):
       >>> P = filter(A.reader(), B.writer(), "42", debug=True)
 
       or
-      >>> @multiprocess(host="localhost", port=9998)
+      >>> @multiprocess(pycsp_host="localhost", pycsp_port=9998)
       >>> def filter(dataIn, dataOut, tag, debug=False):
       >>>   pass # perform filtering
       >>>
@@ -52,16 +50,16 @@ def multiprocess(func=None, host='', port=None):
     """
     if func:
         def _call(*args, **kwargs):
-            host = ''
-            port = None
-            return MultiProcess(func, host, port, *args, **kwargs)
-        _call.func_name = func.func_name
+            return MultiProcess(func, *args, **kwargs)
+        _call.__name__ = func.__name__
         return _call
     else:
         def wrap_process(func):
             def _call(*args, **kwargs):
-                return MultiProcess(func, host, port, *args, **kwargs)
-            _call.func_name = func.func_name
+                kwargs['pycsp_host']= pycsp_host
+                kwargs['pycsp_port']= pycsp_port
+                return MultiProcess(func, *args, **kwargs)
+            _call.__name__ = func.__name__
             return _call
         return wrap_process
 
@@ -69,7 +67,7 @@ def multiprocess(func=None, host='', port=None):
 
 # Classes
 class MultiProcess(multiprocessing.Process):
-    """ MultiProcess(func, host, port, *args, **kwargs)
+    """ MultiProcess(func, *args, **kwargs)
 
     CSP process implemented as a single OS process.
 
@@ -80,9 +78,9 @@ class MultiProcess(multiprocessing.Process):
       >>> def filter(dataIn, dataOut, tag, debug=False):
       >>>   pass # perform filtering
       >>>
-      >>> P = MultiProcess(filter, "localhost", 0, A.reader(), B.writer(), "42", debug=True) 
+      >>> P = MultiProcess(filter, A.reader(), B.writer(), "42", debug=True, pycsp_host='localhost') 
 
-    MultiProcess(func, host, port, *args, **kwargs)
+    MultiProcess(func, *args, **kwargs)
     func
       The function object to wrap and execute in the body of the process.
     args and kwargs
@@ -92,17 +90,21 @@ class MultiProcess(multiprocessing.Process):
     Public variables:
       MultiProcess.name       Unique name to identify the process
     """
-    def __init__(self, fn, host, port, *args, **kwargs):
+    def __init__(self, fn, *args, **kwargs):
         multiprocessing.Process.__init__(self)
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
+        
+        # Create return pipe for return value
+        self.return_pipe = multiprocessing.Pipe()
 
         # Create 64 byte unique id based on network address, sequence number and time sample.
-        self.id = uuid.uuid1().hex + "." + fn.func_name[:31]
+        self.id = uuid.uuid1().hex + "." + fn.__name__[:31]
+        self.id = self.id.encode()
         
-
         # Channel request state
+        self.cond = None
         self.state = FAIL
         self.result_ch_idx = None
         self.result_msg = None
@@ -112,10 +114,6 @@ class MultiProcess(multiprocessing.Process):
 
         # Used to ensure the validity of the remote answers
         self.sequence_number = 1
-
-        # Host and Port address will be set for the SocketDispatcher (one per interpreter/multiprocess)
-        self.host = host
-        self.port = port
 
         # Protect against early termination of mother-processes leavings childs in an invalid state
         self.spawned = []
@@ -132,7 +130,21 @@ class MultiProcess(multiprocessing.Process):
         self.maintained= True
 
         # report execution error
-        self._error = RawValue('i', 0)
+        self._error = multiprocessing.RawValue('i', 0)
+
+    def update(self, **kwargs):
+        if self.cond:
+            raise FatalException("Can not update process settings after it has been started")
+    
+        diff= set(kwargs.keys()).difference(["pycsp_host", "pycsp_port"])
+        if diff:
+            raise InfoException("Parameters %s not valid for MultiProcess, use another process type or remove parameters." % (str(diff)))
+        
+        # Update values
+        self.kwargs.update(kwargs)
+
+        # Return updated process
+        return self
 
     def wait_ack(self):
         self.cond.acquire()
@@ -148,22 +160,40 @@ class MultiProcess(multiprocessing.Process):
             self.cond.wait()
         self.cond.release()
 
-    def _report(self):
-        # Method to execute after process have quit.
+    def join_report(self):
         # This method enables propagation of errors to parent processes and threads.
+        # It also transfers the return value from function
+
+        # Receive value while process is running, since send may block until read
+        val= self.return_pipe[0].recv()
         
-        # It is optional whether the parent process/threads calls this method, thus
-        # no cleanup should be made from this method. Purely reporting.
+        # Wait for process to finish
+        self.join()
 
         # 1001 = Socket bind error
         if self._error.value == 1001:          
             raise ChannelBindException(None, 'Could not bind to address in multiprocess')
+
+        # Return read value
+        return val
+
 
     def run(self):
         
         # Multiprocessing inherits global objects like singletons. Thus we must reset!
         # Reset SocketDispatcher Singleton object to force the creation of a new
         # SocketDispatcher
+
+        # Host and Port address will be set for the SocketDispatcher (one per interpreter/multiprocess)
+        if "pycsp_host" in self.kwargs:
+            self.host = self.kwargs.pop("pycsp_host")
+        else:
+            self.host = ''
+            
+        if "pycsp_port" in self.kwargs:
+            self.port = self.kwargs.pop("pycsp_port")
+        else:
+            self.port = None
 
         if self.host != '':
             conf.set(PYCSP_HOST, self.host)
@@ -174,6 +204,7 @@ class MultiProcess(multiprocessing.Process):
             SocketDispatcher(reset=True)
         except SocketBindException as e:
             self._error.value = 1001
+            self.return_pipe[1].send(None)
             return
 
         # Create remote lock
@@ -182,22 +213,23 @@ class MultiProcess(multiprocessing.Process):
         self.addr = dispatch.server_addr
         dispatch.registerProcess(self.id, RemoteLock(self))
 
+        return_value = None
         try:
-            # Do not store the returned value from the process
-            # TODO: Consider, whether process should return values
-            self.fn(*self.args, **self.kwargs)
+            return_value = self.fn(*self.args, **self.kwargs)
         except ChannelPoisonException as e:
             # look for channels and channel ends
             self.__check_poison(self.args)
-            self.__check_poison(self.kwargs.values())
+            self.__check_poison(list(self.kwargs.values()))
         except ChannelRetireException as e:
             # look for channel ends
             self.__check_retire(self.args)
-            self.__check_retire(self.kwargs.values())
-
+            self.__check_retire(list(self.kwargs.values()))
+        finally:
+            self.return_pipe[1].send(return_value)
+    
         # Join spawned processes
         for p in self.spawned:
-            p.join()
+            p.join_report()
 
         # Initiate clean up and waiting for channels to finish outstanding operations.
         for channel in self.activeChanList:
@@ -234,12 +266,12 @@ class MultiProcess(multiprocessing.Process):
     def __check_poison(self, args):
         for arg in args:
             try:
-                if types.ListType == type(arg) or types.TupleType == type(arg):
+                if list == type(arg) or tuple == type(arg):
                     self.__check_poison(arg)
-                elif types.DictType == type(arg):
-                    self.__check_poison(arg.keys())
-                    self.__check_poison(arg.values())
-                elif type(arg.poison) == types.UnboundMethodType:
+                elif dict == type(arg):
+                    self.__check_poison(list(arg.keys()))
+                    self.__check_poison(list(arg.values()))
+                elif type(arg.poison) == types.MethodType:
                     arg.poison()
             except AttributeError:
                 pass
@@ -247,12 +279,12 @@ class MultiProcess(multiprocessing.Process):
     def __check_retire(self, args):
         for arg in args:
             try:
-                if types.ListType == type(arg) or types.TupleType == type(arg):
+                if list == type(arg) or tuple == type(arg):
                     self.__check_retire(arg)
-                elif types.DictType == type(arg):
-                    self.__check_retire(arg.keys())
-                    self.__check_retire(arg.values())
-                elif type(arg.retire) == types.UnboundMethodType:
+                elif dict == type(arg):
+                    self.__check_retire(list(arg.keys()))
+                    self.__check_retire(list(arg.values()))
+                elif type(arg.retire) == types.MethodType:
                     # Ignore if try to retire an already retired channel end.
                     try:
                         arg.retire()
@@ -263,47 +295,50 @@ class MultiProcess(multiprocessing.Process):
 
     # syntactic sugar:  Process() * 2 == [Process<1>,Process<2>]
     def __mul__(self, multiplier):
-        return [self] + [MultiProcess(self.fn, self.host, 0, *self.__mul_channel_ends(self.args), **self.__mul_channel_ends(self.kwargs)) for i in range(multiplier - 1)]
+        kwargs = self.__mul_channel_ends(self.kwargs)
+        # Reset port number, as only one multiprocess may bind to the same interface
+        kwargs['pycsp_port']=0
+        return [self] + [MultiProcess(self.fn, *self.__mul_channel_ends(self.args), **kwargs) for i in range(int(multiplier) - 1)]
 
     # syntactic sugar:  2 * Process() == [Process<1>,Process<2>]
     def __rmul__(self, multiplier):
-        return [self] + [MultiProcess(self.fn, self.host, 0, *self.__mul_channel_ends(self.args), **self.__mul_channel_ends(self.kwargs)) for i in range(multiplier - 1)]
+        return self.__mul__(multiplier)
 
     # Copy lists and dictionaries
     def __mul_channel_ends(self, args):
-        if types.ListType == type(args) or types.TupleType == type(args):
+        if list == type(args) or tuple == type(args):
             R = []
             for item in args:
                 try:                    
-                    if type(item.isReader) == types.UnboundMethodType and item.isReader():
+                    if type(item.isReader) == types.MethodType and item.isReader():
                         R.append(item.channel.reader())
-                    elif type(item.isWriter) == types.UnboundMethodType and item.isWriter():
+                    elif type(item.isWriter) == types.MethodType and item.isWriter():
                         R.append(item.channel.writer())
                 except AttributeError:
-                    if item == types.ListType or item == types.DictType or item == types.TupleType:
+                    if item == list or item == dict or item == tuple:
                         R.append(self.__mul_channel_ends(item))
                     else:
                         R.append(item)
 
-            if types.TupleType == type(args):
+            if tuple == type(args):
                 return tuple(R)
             else:
                 return R
             
-        elif types.DictType == type(args):
+        elif dict == type(args):
             R = {}
             for key in args:
                 try:
-                    if type(key.isReader) == types.UnboundMethodType and key.isReader():
+                    if type(key.isReader) == types.MethodType and key.isReader():
                         R[key.channel.reader()] = args[key]
-                    elif type(key.isWriter) == types.UnboundMethodType and key.isWriter():
+                    elif type(key.isWriter) == types.MethodType and key.isWriter():
                         R[key.channel.writer()] = args[key]
-                    elif type(args[key].isReader) == types.UnboundMethodType and args[key].isReader():
+                    elif type(args[key].isReader) == types.MethodType and args[key].isReader():
                         R[key] = args[key].channel.reader()
-                    elif type(args[key].isWriter) == types.UnboundMethodType and args[key].isWriter():
+                    elif type(args[key].isWriter) == types.MethodType and args[key].isWriter():
                         R[key] = args[key].channel.writer()
                 except AttributeError:
-                    if args[key] == types.ListType or args[key] == types.DictType or args[key] == types.TupleType:
+                    if args[key] == list or args[key] == dict or args[key] == tuple:
                         R[key] = self.__mul_channel_ends(args[key])
                     else:
                         R[key] = args[key]

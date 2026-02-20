@@ -7,20 +7,16 @@ See LICENSE.txt for licensing details (MIT License).
 """
 
 # Imports
-try: from greenlet import greenlet
-except ImportError, e:
-    from py.magic import greenlet
-    
-from scheduling import Scheduler
-from channelend import ChannelEndRead, ChannelEndWrite, ChannelRetireException
-from exceptions import *
+from pycsp.greenlets.scheduling import Scheduler
+from pycsp.greenlets.channelend import ChannelEndRead, ChannelEndWrite, ChannelRetireException
+from pycsp.greenlets.exceptions import *
 
 from pycsp.common.const import *
 
 import time, random
 
 # Classes
-class ChannelReq:
+class ChannelReq(object):
     def __init__(self, process, msg=None):
         self.msg = msg
         self.result = FAIL
@@ -52,8 +48,8 @@ class Channel(object):
     """
 
     def __new__(cls, *args, **kargs):
-        if kargs.has_key('buffer') and kargs['buffer'] > 0:
-            import buffer                      
+        if 'buffer' in kargs and kargs['buffer'] > 0:
+            from . import buffer                      
             chan = buffer.BufferedChannel(*args, **kargs)
             return chan
         else:
@@ -99,7 +95,7 @@ class Channel(object):
                 w.result = SUCCESS
                 w.process.state = DONE
                 if p != w.process:
-                    self.s.next.append(w.process)
+                    self.s.nextQ.append(w.process)
                 return msg        
 
         p.setstate(ACTIVE)
@@ -113,7 +109,7 @@ class Channel(object):
         
         self.check_termination()
             
-        print 'We should not get here in read!!!'
+        print('We should not get here in read!!!')
         return None #Here we should handle that a read was cancled...
 
     
@@ -131,7 +127,7 @@ class Channel(object):
                 r.result = SUCCESS
                 r.process.state = DONE
                 if p != r.process:
-                    self.s.next.append(r.process)
+                    self.s.nextQ.append(r.process)
                 return True
 
         p.setstate(ACTIVE)
@@ -145,7 +141,7 @@ class Channel(object):
     
         self.check_termination()
 
-        print 'We should not get here in write!!!'
+        print('We should not get here in write!!!')
         return None #Here we should handle that a read was cancled...
 
     def _post_read(self, req):
@@ -177,8 +173,8 @@ class Channel(object):
     def poison(self):
         if not self.ispoisoned:
             self.ispoisoned = True
-            map(ChannelReq.poison, self.readqueue)
-            map(ChannelReq.poison, self.writequeue)
+            list(map(ChannelReq.poison, self.readqueue))
+            list(map(ChannelReq.poison, self.writequeue))
 
     def __pos__(self):
         return self.reader()

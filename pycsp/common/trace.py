@@ -104,12 +104,12 @@ def process(func):
     def _call(*args, **kwargs):
         def wrapfunc(*wrap_args, **wrap_kwargs):
             process_id = pycsp.current_process_id()
-            sendTrace({'type':'StartProcess', 'func_name':func.func_name, 'process_id':process_id})
+            sendTrace({'type':'StartProcess', 'func_name':func.__name__, 'process_id':process_id})
             try:
                 func(*wrap_args, **wrap_kwargs)
             finally:
-                sendTrace({'type':'QuitProcess', 'func_name':func.func_name, 'process_id':process_id})
-        wrapfunc.func_name = func.func_name
+                sendTrace({'type':'QuitProcess', 'func_name':func.__name__, 'process_id':process_id})
+        wrapfunc.__name__ = func.__name__
         t = pycsp.Process(wrapfunc, *args, **kwargs)
         return t
     return _call
@@ -120,15 +120,16 @@ def Parallel(*plist):
     for p in plist:
         if type(p) == type([]):            
             for p_2 in p:
-                val['processes'].append({'func_name':p_2.fn.func_name, 'process_id':p_2.id})
+                val['processes'].append({'func_name':p_2.fn.__name__, 'process_id':p_2.id})
         else:
-            val['processes'].append({'func_name':p.fn.func_name, 'process_id':p.id})
+            val['processes'].append({'func_name':p.fn.__name__, 'process_id':p.id})
     
     val['type'] = 'BlockOnParallel'
     sendTrace(val)
-    pycsp.Parallel(*plist)
+    result = pycsp.Parallel(*plist)
     val['type'] = 'DoneParallel'
     sendTrace(val)
+    return result
 
 def Sequence(*plist):
     process_id = pycsp.current_process_id()
@@ -136,14 +137,15 @@ def Sequence(*plist):
     for p in plist:
         if type(p) == type([]):            
             for p_2 in p:
-                val['processes'].append({'func_name':p_2.fn.func_name, 'process_id':p_2.id})
+                val['processes'].append({'func_name':p_2.fn.__name__, 'process_id':p_2.id})
         else:
-            val['processes'].append({'func_name':p.fn.func_name, 'process_id':p.id})
+            val['processes'].append({'func_name':p.fn.__name__, 'process_id':p.id})
     val['type'] = 'BlockOnSequence'
     sendTrace(val)
-    pycsp.Sequence(*plist)
+    result = pycsp.Sequence(*plist)
     val['type'] = 'DoneSequence'
     sendTrace(val)
+    return result
 
 def Spawn(*plist):
     process_id = pycsp.current_process_id()
@@ -151,9 +153,9 @@ def Spawn(*plist):
     for p in plist:
         if type(p) == type([]):
             for p_2 in p:
-                val['processes'].append({'func_name':p_2.fn.func_name, 'process_id':p_2.id})
+                val['processes'].append({'func_name':p_2.fn.__name__, 'process_id':p_2.id})
         else:
-            val['processes'].append({'func_name':p.fn.func_name, 'process_id':p.id})
+            val['processes'].append({'func_name':p.fn.__name__, 'process_id':p.id})
     sendTrace(val)
     pycsp.Spawn(*plist)
 

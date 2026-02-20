@@ -9,26 +9,26 @@ See LICENSE.txt for licensing details (MIT License).
 # Test for Greenlets
 import sys
 try: from greenlet import greenlet
-except ImportError, e:
+except ImportError as e:
     try: from py.magic import greenlet
-    except ImportError, e: 
+    except ImportError as e: 
         sys.stderr.write("PyCSP.greenlets requires the greenlet module, recommended version is 0.2 or above and is\navailable from http://pypi.python.org/pypi/greenlet/.\n\n")
         raise ImportError(e)
 
 # Imports
-from scheduling import Io, io
-from guard import Skip, Timeout, SkipGuard, TimeoutGuard
-from alternation import choice, Alternation
-from altselect import FairSelect, AltSelect, PriSelect, InputGuard, OutputGuard
-from channel import Channel
-from channelend import retire, poison
-from process import Process, process, Sequence, Parallel, Spawn, current_process_id
-from exceptions import ChannelPoisonException, ChannelRetireException, FatalException, InfoException
-from compat import *
+from pycsp.greenlets.scheduling import Io, io
+from pycsp.greenlets.guard import Skip, Timeout, SkipGuard, TimeoutGuard
+from pycsp.greenlets.alternation import choice, Alternation
+from pycsp.greenlets.altselect import FairSelect, AltSelect, PriSelect, InputGuard, OutputGuard
+from pycsp.greenlets.channel import Channel
+from pycsp.greenlets.channelend import retire, poison
+from pycsp.greenlets.process import Process, process, Sequence, Parallel, Spawn, current_process_id
+from pycsp.greenlets.exceptions import ChannelPoisonException, ChannelRetireException, FatalException, InfoException
+from pycsp.greenlets.compat import *
 
-__all__ = ['Skip', 'SkipGuard', 'Timeout', 'TimeoutGuard', 'InputGuard', 'OutputGuard', 'choice', 'Alternation', 'FairSelect', 'AltSelect', 'PriSelect', 'Channel', 'retire', 'poison', 'Process', 'process', 'MultiProcess', 'multiprocess', 'Sequence', 'Parallel', 'Spawn', 'current_process_id', 'shutdown', 'ChannelRetireException', 'ChannelPoisonException', 'ChannelSocketException', 'InfoException', 'FatalException', 'io', 'Io', 'Configuration', 'SOCKETS_CONNECT_TIMEOUT', 'SOCKETS_CONNECT_RETRY_DELAY', 'SOCKETS_BIND_TIMEOUT', 'SOCKETS_BIND_RETRY_DELAY', 'PYCSP_PORT', 'PYCSP_HOST', 'SOCKETS_STRICT_MODE', 'version']
+__all__ = ['Skip', 'SkipGuard', 'Timeout', 'TimeoutGuard', 'InputGuard', 'OutputGuard', 'choice', 'Alternation', 'FairSelect', 'AltSelect', 'PriSelect', 'Channel', 'retire', 'poison', 'Process', 'process', 'MultiProcess', 'multiprocess', 'ClusterProcess', 'clusterprocess', 'SSHProcess', 'sshprocess', 'Sequence', 'Parallel', 'Spawn', 'current_process_id', 'shutdown', 'ChannelRetireException', 'ChannelPoisonException', 'ChannelSocketException', 'InfoException', 'FatalException', 'io', 'Io', 'Configuration', 'SOCKETS_CONNECT_TIMEOUT', 'SOCKETS_CONNECT_RETRY_DELAY', 'SOCKETS_BIND_TIMEOUT', 'SOCKETS_BIND_RETRY_DELAY', 'PYCSP_PORT', 'PYCSP_HOST', 'SOCKETS_STRICT_MODE', 'version']
 
-version = (0,9,0, 'greenlets')
+version = (0,9,2, 'greenlets')
 
 # Set current implementation
 import pycsp.current

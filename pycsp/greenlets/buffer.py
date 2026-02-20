@@ -10,10 +10,10 @@ Copyright (c) 2009 John Markus Bjoerndalen <jmb@cs.uit.no>,
 See LICENSE.txt for licensing details (MIT License). 
 """
 
-from .channel import Channel, ChannelPoisonException, ChannelRetireException
-from .channelend import poison, retire
-from .process import process, Spawn
-from .alternation import Alternation
+from pycsp.greenlets.channel import Channel, ChannelPoisonException, ChannelRetireException
+from pycsp.greenlets.channelend import poison, retire
+from pycsp.greenlets.process import process, Spawn
+from pycsp.greenlets.alternation import Alternation
 
 import pycsp.current
 if pycsp.current.trace:
@@ -22,7 +22,7 @@ if pycsp.current.trace:
 from collections import deque
 import time, random
 
-class BufferedChannel:
+class BufferedChannel(object):
     """ Channel class.
     Blocking or buffered communication.
     
@@ -138,7 +138,7 @@ class BufferedChannel:
                 # Queue full
                 else:
                     cout(queue.popleft())
-            except ChannelPoisonException, e:
+            except ChannelPoisonException as e:
                 poisoned = True
-            except ChannelRetireException, e:
+            except ChannelRetireException as e:
                 retired = True

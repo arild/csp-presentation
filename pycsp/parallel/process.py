@@ -12,8 +12,7 @@ import uuid
 import threading
 
 from pycsp.parallel.dispatch import SocketDispatcher
-from pycsp.parallel.protocol import RemoteLock, ChannelMessenger
-from pycsp.parallel.channel import Channel, ChannelEndRead, ChannelEndWrite
+from pycsp.parallel.protocol import RemoteLock
 from pycsp.parallel.const import *
 from pycsp.parallel.exceptions import *
 
@@ -68,9 +67,11 @@ class Process(threading.Thread):
         self.fn = fn
         self.args = args
         self.kwargs = kwargs
+        self.return_value = None
 
         # Create 64 byte unique id based on network address, sequence number and time sample.
-        self.id = uuid.uuid1().hex + "." + fn.func_name[:31]
+        self.id = uuid.uuid1().hex + "." + fn.__name__[:31]
+        self.id = self.id.encode()
         
         # Channel request state
         self.state = FAIL        
@@ -100,6 +101,10 @@ class Process(threading.Thread):
         # report execution error
         self._error = None
 
+    def update(self, **kwargs):
+        # Ignore update of parameters, as this processes accepts none.
+        return self
+ 
     def wait_ack(self):
         self.cond.acquire()
         while not self.ack:
@@ -114,16 +119,17 @@ class Process(threading.Thread):
             self.cond.wait()
         self.cond.release()
 
-    def _report(self):
-        # Method to execute after process have quit.
+    def join_report(self):
         # This method enables propagation of errors to parent processes and threads.
+        # It also transfers the return value from function
+
+        # Wait for process to finish
+        self.join()
+
+        # return result of process/function
+        return self.return_value
         
-        # It is optional whether the parent process/threads calls this method, thus
-        # no cleanup should be made from this method. Purely reporting.
-        pass
-        
-    def run(self):
-        
+    def run(self):        
         # Create remote lock
         self.cond = threading.Condition()        
         dispatch = SocketDispatcher().getThread()
@@ -131,20 +137,19 @@ class Process(threading.Thread):
         dispatch.registerProcess(self.id, RemoteLock(self))
 
         try:
-            # Store the returned value from the process
-            self.fn(*self.args, **self.kwargs)
+            self.return_value = self.fn(*self.args, **self.kwargs)
         except ChannelPoisonException as e:
             # look for channels and channel ends
             self.__check_poison(self.args)
-            self.__check_poison(self.kwargs.values())
+            self.__check_poison(list(self.kwargs.values()))
         except ChannelRetireException as e:
             # look for channel ends
             self.__check_retire(self.args)
-            self.__check_retire(self.kwargs.values())
+            self.__check_retire(list(self.kwargs.values()))
 
         # Join spawned processes
         for p in self.spawned:
-            p.join()
+            p.join_report()
 
         # Initiate clean up and waiting for channels to finish outstanding operations.
         for channel in self.activeChanList:
@@ -171,12 +176,12 @@ class Process(threading.Thread):
     def __check_poison(self, args):
         for arg in args:
             try:
-                if types.ListType == type(arg) or types.TupleType == type(arg):
+                if list == type(arg) or tuple == type(arg):
                     self.__check_poison(arg)
-                elif types.DictType == type(arg):
-                    self.__check_poison(arg.keys())
-                    self.__check_poison(arg.values())
-                elif type(arg.poison) == types.UnboundMethodType:
+                elif dict == type(arg):
+                    self.__check_poison(list(arg.keys()))
+                    self.__check_poison(list(arg.values()))
+                elif type(arg.poison) == types.MethodType:
                     arg.poison()
             except AttributeError:
                 pass
@@ -184,12 +189,12 @@ class Process(threading.Thread):
     def __check_retire(self, args):
         for arg in args:
             try:
-                if types.ListType == type(arg) or types.TupleType == type(arg):
+                if list == type(arg) or tuple == type(arg):
                     self.__check_retire(arg)
-                elif types.DictType == type(arg):
-                    self.__check_retire(arg.keys())
-                    self.__check_retire(arg.values())
-                elif type(arg.retire) == types.UnboundMethodType:
+                elif dict == type(arg):
+                    self.__check_retire(list(arg.keys()))
+                    self.__check_retire(list(arg.values()))
+                elif type(arg.retire) == types.MethodType:
                     # Ignore if try to retire an already retired channel end.
                     try:
                         arg.retire()
@@ -200,47 +205,47 @@ class Process(threading.Thread):
 
     # syntactic sugar:  Process() * 2 == [Process<1>,Process<2>]
     def __mul__(self, multiplier):
-        return [self] + [Process(self.fn, *self.__mul_channel_ends(self.args), **self.__mul_channel_ends(self.kwargs)) for i in range(multiplier - 1)]
+        return [self] + [Process(self.fn, *self.__mul_channel_ends(self.args), **self.__mul_channel_ends(self.kwargs)) for i in range(int(multiplier) - 1)]
 
     # syntactic sugar:  2 * Process() == [Process<1>,Process<2>]
     def __rmul__(self, multiplier):
-        return [self] + [Process(self.fn, *self.__mul_channel_ends(self.args), **self.__mul_channel_ends(self.kwargs)) for i in range(multiplier - 1)]
+        return [self] + [Process(self.fn, *self.__mul_channel_ends(self.args), **self.__mul_channel_ends(self.kwargs)) for i in range(int(multiplier) - 1)]
 
     # Copy lists and dictionaries
     def __mul_channel_ends(self, args):
-        if types.ListType == type(args) or types.TupleType == type(args):
+        if list == type(args) or tuple == type(args):
             R = []
             for item in args:
                 try:                    
-                    if type(item.isReader) == types.UnboundMethodType and item.isReader():
+                    if type(item.isReader) == types.MethodType and item.isReader():
                         R.append(item.channel.reader())
-                    elif type(item.isWriter) == types.UnboundMethodType and item.isWriter():
+                    elif type(item.isWriter) == types.MethodType and item.isWriter():
                         R.append(item.channel.writer())
                 except AttributeError:
-                    if item == types.ListType or item == types.DictType or item == types.TupleType:
+                    if item == list or item == dict or item == tuple:
                         R.append(self.__mul_channel_ends(item))
                     else:
                         R.append(item)
 
-            if types.TupleType == type(args):
+            if tuple == type(args):
                 return tuple(R)
             else:
                 return R
             
-        elif types.DictType == type(args):
+        elif dict == type(args):
             R = {}
             for key in args:
                 try:
-                    if type(key.isReader) == types.UnboundMethodType and key.isReader():
+                    if type(key.isReader) == types.MethodType and key.isReader():
                         R[key.channel.reader()] = args[key]
-                    elif type(key.isWriter) == types.UnboundMethodType and key.isWriter():
+                    elif type(key.isWriter) == types.MethodType and key.isWriter():
                         R[key.channel.writer()] = args[key]
-                    elif type(args[key].isReader) == types.UnboundMethodType and args[key].isReader():
+                    elif type(args[key].isReader) == types.MethodType and args[key].isReader():
                         R[key] = args[key].channel.reader()
-                    elif type(args[key].isWriter) == types.UnboundMethodType and args[key].isWriter():
+                    elif type(args[key].isWriter) == types.MethodType and args[key].isWriter():
                         R[key] = args[key].channel.writer()
                 except AttributeError:
-                    if args[key] == types.ListType or args[key] == types.DictType or args[key] == types.TupleType:
+                    if args[key] == list or args[key] == dict or args[key] == tuple:
                         R[key] = self.__mul_channel_ends(args[key])
                     else:
                         R[key] = args[key]
@@ -248,7 +253,7 @@ class Process(threading.Thread):
         return args
                 
 # Functions
-def Parallel(*plist):
+def Parallel(*plist, **kwargs):
     """ Parallel(P1, [P2, .. ,PN])
 
     Performs concurrent synchronous execution of the supplied CSP processes. 
@@ -270,9 +275,9 @@ def Parallel(*plist):
       >>> C = Channel()  
       >>> Parallel(P1(C.writer()), P2(C.reader()))
     """
-    _parallel(plist, True)
+    return _parallel(plist, True, kwargs)
 
-def Spawn(*plist):
+def Spawn(*plist, **kwargs):
     """ Spawn(P1, [P2, .. ,PN])
 
     Performs concurrent asynchronous execution of the supplied CSP processes. 
@@ -292,9 +297,9 @@ def Spawn(*plist):
       ...     while True:
       ...         cin()
     """
-    _parallel(plist, False)
+    _parallel(plist, False, kwargs)
 
-def _parallel(plist, block = True):
+def _parallel(plist, block, kwargs):
     processes=[]
     for p in plist:
         if type(p)==list:
@@ -302,19 +307,29 @@ def _parallel(plist, block = True):
                 processes.append(q)
         else:
             processes.append(p)
+    
+    # Update process parameters
+    if kwargs:
+        for p in processes:
+            p.update(**kwargs)
 
+    # Start processes
     for p in processes:
         p.start()
 
     if block:
+        # Blocking behaviour
+        return_values = []
         for p in processes:
-            p.join()
-            p._report()
+            return_values.append(p.join_report())
+        return return_values
+
     else:
+        # Spawn
         p,_ = getThreadAndName()
         p.spawned.extend(processes)
     
-def Sequence(*plist):
+def Sequence(*plist, **kwargs):
     """ Sequence(P1, [P2, .. ,PN])
 
     Performs synchronous execution of the supplied CSP processes. 
@@ -339,18 +354,20 @@ def Sequence(*plist):
         else:
             processes.append(p)
 
-    # For every process we simulate a new process_id.
-    t, name = getThreadAndName()
+    # Update process parameters
+    if kwargs:
+        for p in processes:
+            p.update(**kwargs)
 
-    t_original_id = t.id
+    # Run processes sequentially but each as a real separate process.
+    # For simplicity we no longer execute the .run method directly,
+    # but use the same approach as in the _parallel function.
+    return_values = []
     for p in processes:
-        t.id = p.id
-
-        # Call Run directly instead of start() and join() 
-        p.run()
-        p._report()
-
-    t.id = t_original_id
+        p.start()
+        return_values.append(p.join_report())
+    
+    return return_values
 
 
 def current_process_id():
@@ -403,6 +420,7 @@ def init():
             init_procs.append(current_proc)
 
         current_proc.id = uuid.uuid1().hex + ".__INIT__"
+        current_proc.id = current_proc.id.encode()
         current_proc.fn = None
         current_proc.state = FAIL
         current_proc.result_ch_idx = None
@@ -476,7 +494,7 @@ def shutdown():
         dispatch = SocketDispatcher().getThread()
 
         for p in current_proc.spawned:
-            p.join()
+            p.join_report()
 
         # Initiate clean up and waiting for channels to finish outstanding operations.
         for channel in current_proc.activeChanList:

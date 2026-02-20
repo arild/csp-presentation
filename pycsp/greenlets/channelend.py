@@ -6,7 +6,7 @@ Copyright (c) 2009 John Markus Bjoerndalen <jmb@cs.uit.no>,
 See LICENSE.txt for licensing details (MIT License). 
 """
 
-from exceptions import *
+from pycsp.greenlets.exceptions import *
 from pycsp.common.const import *
 
 def retire(*list_of_channelEnds):
@@ -23,18 +23,24 @@ def poison(*list_of_channelEnds):
         channelEnd.poison()
 
 # Classes
-class ChannelEndWrite():
+class ChannelEndWrite(object):
     def __init__(self, channel):
         self.channel = channel
-        self.op = WRITE        
+        self._op = WRITE        
 
         # Prevention against multiple retires
         self.isretired = False
 
-        self.__call__ = self.channel._write
         self._post_write = self.channel._post_write
         self._remove_write = self.channel._remove_write
         self.poison = self.channel.poison
+
+    def __lt__(self, other):
+        # Needed for sorting in FairSelect
+        return self
+
+    def __call__(self, *args, **kwargs):
+        return self.channel._write(*args, **kwargs)
 
     def _retire(self, *ignore):
         raise ChannelRetireException()
@@ -58,18 +64,24 @@ class ChannelEndWrite():
     def isReader(self):
         return False
 
-class ChannelEndRead():
+class ChannelEndRead(object):
     def __init__(self, channel):
         self.channel = channel
-        self.op = READ
+        self._op = READ
 
         # Prevention against multiple retires
         self.isretired = False
 
-        self.__call__ = self.channel._read
         self._post_read = self.channel._post_read
         self._remove_read = self.channel._remove_read
         self.poison = self.channel.poison
+
+    def __lt__(self, other):
+        # Needed for sorting in FairSelect
+        return self
+
+    def __call__(self, *args, **kwargs):
+        return self.channel._read(*args, **kwargs)
 
     def _retire(self, *ignore):
         raise ChannelRetireException()
