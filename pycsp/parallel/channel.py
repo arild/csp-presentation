@@ -8,11 +8,7 @@ See LICENSE.txt for licensing details (MIT License).
 
 # Imports
 import uuid
-
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
+import pickle
 
 from pycsp.parallel import protocol
 from pycsp.parallel.exceptions import *
@@ -139,8 +135,10 @@ class Channel(object):
             if len(name) > 32:
                 raise Exception("Channel names are limited to 32 characters")
 
-            self.name=name
+            self.name= name
 
+        if type(self.name) != bytes:
+            self.name = self.name.encode()
 
         self._CM = protocol.ChannelMessenger()
 
@@ -264,7 +262,7 @@ class Channel(object):
 
         self._check_termination()
 
-        print('We should not get here in read!!!' + str(p.state))
+        print(('We should not get here in read!!!' + str(p.state)))
         return None
 
     
@@ -290,7 +288,7 @@ class Channel(object):
 
         self._check_termination()
 
-        print('We should not get here in write!!! ' + str(p.state) + ' ' + str(msg))
+        print(('We should not get here in write!!! ' + str(p.state) + ' ' + str(msg)))
         return None
     
     def reader(self):
@@ -377,10 +375,9 @@ class Channel(object):
         return self.__mul__(multiplier)
 
 
-class ChannelEnd:
+class ChannelEnd(object):
     def __init__(self, channel):
-
-
+        
         self.channel = channel
         self._op = WRITE
 
@@ -389,7 +386,10 @@ class ChannelEnd:
         self._ispoisoned = False
 
         self._restore_info = None
-
+        
+    def __lt__(self, other):
+        # Needed for sorting in FairSelect
+        return self
 
     def __getstate__(self):
         """
@@ -414,8 +414,8 @@ class ChannelEnd:
     def __setstate__(self, dict):
         """
         Enables channel end mobility
-        """        
-
+        """
+                
         self.__dict__.update(dict)
 
         # restore Channel immediately, as the receiving end must register a new channel reference, before
@@ -445,6 +445,9 @@ class ChannelEnd:
             self.__call__ = self._poison
             self._ispoisoned = True
 
+        # As a final action. The channel end should be disconnected.
+        self.disconnect()
+            
     def _retire(self, *ignore):
         raise ChannelRetireException()
 
@@ -469,6 +472,9 @@ class ChannelEnd:
             self.channel._retire(direction=self._op)
             self.__call__ = self._retire
             self._isretired = True
+
+        # As a final action. The channel end should be disconnected.
+        self.disconnect()
 
     def __repr__(self):
         return "<ChannelEndWrite on channel named %s>" % self.channel.name
@@ -519,10 +525,11 @@ class ChannelEnd:
 
     
 class ChannelEndWrite(ChannelEnd):
+        
     def __init__(self, channel):
         ChannelEnd.__init__(self, channel)
         self._op = WRITE
-
+ 
     def __call__(self, msg):
         if not self.channel:
             raise FatalException("The user have tried to communicate on a channel end which have been moved to another process")

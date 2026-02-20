@@ -9,7 +9,7 @@ def LoggerProcess(log_chan):
     while True:
         try:
             (prefix, msg) = log_chan()
-            print '[' + str(datetime.datetime.now().strftime('%H:%M:%S.%f')) + '][' + prefix.upper() + '] ' + msg
+            print('[' + str(datetime.datetime.now().strftime('%H:%M:%S.%f')) + '][' + prefix.upper() + '] ' + msg)
         except ChannelPoisonException:
             break
 
