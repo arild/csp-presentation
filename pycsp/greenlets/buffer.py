@@ -22,7 +22,7 @@ if pycsp.current.trace:
 from collections import deque
 import time, random
 
-class BufferedChannel:
+class BufferedChannel(object):
     """ Channel class.
     Blocking or buffered communication.
     
@@ -138,7 +138,7 @@ class BufferedChannel:
                 # Queue full
                 else:
                     cout(queue.popleft())
-            except ChannelPoisonException, e:
+            except ChannelPoisonException as e:
                 poisoned = True
-            except ChannelRetireException, e:
+            except ChannelRetireException as e:
                 retired = True

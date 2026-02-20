@@ -1,5 +1,5 @@
 from pycsp import *
-import logger as Logger
+from logger import get_logger
 
 
 def sendAsync(chan, msg):
@@ -11,7 +11,7 @@ def sendAsync(chan, msg):
 
 @process
 def BroadcastRouter(publish_chan, subscribe_chan):
-    logger = Logger.get_logger('broadcast')
+    logger = get_logger('broadcast')
     subscription_channels = []
     while True:
         try:
